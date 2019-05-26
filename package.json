@@ -1,0 +1,33 @@
+{
+  "name": "fast-gateway",
+  "version": "1.0.0",
+  "description": "A Node.js API Gateway for the masses!",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jkyberneees/fast-gateway.git"
+  },
+  "keywords": [
+    "fast",
+    "http",
+    "proxy",
+    "api",
+    "gateway"
+  ],
+  "author": "Rolando Santamaria Maso <kyberneees@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jkyberneees/fast-gateway/issues"
+  },
+  "homepage": "https://github.com/jkyberneees/fast-gateway#readme",
+  "dependencies": {
+    "fast-proxy": "^1.1.0",
+    "restana": "^3.0.2"
+  },
+  "devDependencies": {
+    "standard": "^12.0.1"
+  }
+}
