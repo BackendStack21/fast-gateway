@@ -35,9 +35,9 @@ service.start(3000)
   // HTTP proxy
   routes: [{
     // Optional `fast-proxy` library configuration (https://www.npmjs.com/package/fast-proxy#options)
-    // base parameter defined as the route target
+    // base parameter defined as the route target. Default value: {}
     fastProxy: {},
-    // Optional flag to indicate if target uses the HTTP2 protocol 
+    // Optional flag to indicate if target uses the HTTP2 protocol. Default value: false
     http2: false,
     // Optional path matching regex. Default value: '/*'
     // In order to disable the 'pathRegex' at all, you can use an empty string: ''
