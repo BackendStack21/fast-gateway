@@ -4,7 +4,9 @@
   "description": "A Node.js API Gateway for the masses!",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "nyc mocha test/*.test.js --exit",
+    "format": "npx standard --fix",
+    "lint": "npx standard"
   },
   "repository": {
     "type": "git",
@@ -28,6 +30,12 @@
     "restana": "^3.0.2"
   },
   "devDependencies": {
-    "standard": "^12.0.1"
+    "chai": "^4.2.0",
+    "cors": "^2.8.5",
+    "mocha": "^6.1.4",
+    "nyc": "^14.1.1",
+    "response-time": "^2.3.2",
+    "standard": "^12.0.1",
+    "supertest": "^4.0.2"
   }
 }
