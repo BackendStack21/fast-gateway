@@ -7,7 +7,9 @@ const gateway = (opts) => {
     pathRegex: '/*'
   }, opts)
 
-  const server = restana(opts.restana || {})
+  const server = restana(opts.restana || {
+    disableResponseEvent: true
+  })
 
   // registering global middlewares
   opts.middlewares.forEach(middleware => {
@@ -30,7 +32,7 @@ const gateway = (opts) => {
     const { proxy } = fastProxy({
       base: route.target,
       http2: !!route.http2,
-      ...(opts.fastProxy || {})
+      ...(opts.fastProxy)
     })
 
     // registering route handler
@@ -42,14 +44,10 @@ const gateway = (opts) => {
 }
 
 const handler = (route, proxy) => async (req, res) => {
-  try {
-    req.url = req.url.replace(route.prefix, route.prefixRewrite)
-    const shouldAbortProxy = await route.hooks.onRequest(req, res)
-    if (!shouldAbortProxy) {
-      proxy(req, res, req.url, Object.assign({}, route.hooks))
-    }
-  } catch (err) {
-    res.send(err)
+  req.url = req.url.replace(route.prefix, route.prefixRewrite)
+  const shouldAbortProxy = await route.hooks.onRequest(req, res)
+  if (!shouldAbortProxy) {
+    proxy(req, res, req.url, Object.assign({}, route.hooks))
   }
 }
 

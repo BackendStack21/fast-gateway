@@ -29,9 +29,9 @@ Benchmark scripts can be found in benchmark folder.
 Running 20s test @ http://127.0.0.1:8080/service/get
   8 threads and 50 connections
   Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency     2.76ms  609.81us  12.76ms   68.36%
-    Req/Sec     2.19k   297.42    12.43k    94.94%
-  349138 requests in 20.10s, 37.29MB read
-Requests/sec:  17369.68
-Transfer/sec:      1.86MB
+    Latency     2.66ms  581.30us  12.72ms   69.64%
+    Req/Sec     2.27k   138.20     2.57k    93.31%
+  361552 requests in 20.01s, 38.62MB read
+Requests/sec:  18069.77
+Transfer/sec:      1.93MB
 ```
