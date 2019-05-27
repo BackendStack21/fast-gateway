@@ -24,6 +24,7 @@ service.start(3000)
 
 ## Benchmarks
 Benchmark scripts can be found in benchmark folder.
+> Laptop: MacBook Pro 2016, 2,7 GHz Intel Core i7, 16 GB 2133 MHz LPDDR3  
 > wrk -t8 -c50 -d20s http://127.0.0.1:8080/service/get
 ```bash
 Running 20s test @ http://127.0.0.1:8080/service/get
