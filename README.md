@@ -27,7 +27,8 @@ service.start(3000)
 {
   // Optional restana library configuration (https://www.npmjs.com/package/restana#configuration)
   restana: {},
-  // Optional global middlewares (https://www.fastify.io/docs/latest/Middlewares/). Default value: []
+  // Optional global middlewares in the format: (req, res, next) => next() 
+  // Default value: []
   middlewares: [],
   // Optional global value for routes "pathRegex". Default value: '/*'
   pathRegex: '/*',
