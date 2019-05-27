@@ -1,5 +1,6 @@
 # fast-gateway
 A super fast Node.js API Gateway for the masses!  
+> Next generation for: https://www.npmjs.com/package/k-fastify-gateway
 
 ## Usage
 ### Gateway
@@ -88,13 +89,6 @@ This is your repo ;)
 Benchmark scripts can be found in benchmark folder.
 > Laptop: MacBook Pro 2016, 2,7 GHz Intel Core i7, 16 GB 2133 MHz LPDDR3  
 > wrk -t8 -c50 -d20s http://127.0.0.1:8080/service/get
-```bash
-Running 20s test @ http://127.0.0.1:8080/service/get
-  8 threads and 50 connections
-  Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency     2.66ms  581.30us  12.72ms   69.64%
-    Req/Sec     2.27k   138.20     2.57k    93.31%
-  361552 requests in 20.01s, 38.62MB read
-Requests/sec:  18069.77
-Transfer/sec:      1.93MB
-```
+
+- fast-gateway: **18069.77** reqs/secs
+- k-fastify-gateway: 9763.61 reqs/secs
