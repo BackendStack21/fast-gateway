@@ -2,6 +2,11 @@
 A super fast Node.js API Gateway for the masses!  
 > Next generation for: https://www.npmjs.com/package/k-fastify-gateway
 
+## Install
+```js
+npm i fast-gateway
+```
+
 ## Usage
 ### Gateway
 ```js
