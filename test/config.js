@@ -2,7 +2,10 @@ const pump = require('pump')
 
 module.exports = async () => {
   return {
-    middlewares: [require('cors')()],
+    middlewares: [
+      require('cors')(),
+      require('http-cache-middleware')()
+    ],
 
     routes: [{
       pathRegex: '',
