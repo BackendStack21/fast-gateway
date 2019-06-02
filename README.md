@@ -1,6 +1,6 @@
 # fast-gateway
 A super fast Node.js API Gateway for the masses!  
-> Next generation for: https://www.npmjs.com/package/k-fastify-gateway
+> Here you can optionally read more about it: https://medium.com/sharenowtech/k-fastify-gateway-a-node-js-api-gateway-that-you-control-e7388c229b21
 
 ## Install
 ```js
