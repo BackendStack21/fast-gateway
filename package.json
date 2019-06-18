@@ -1,6 +1,6 @@
 {
   "name": "fast-gateway",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "A Node.js API Gateway for the masses!",
   "main": "index.js",
   "scripts": {
@@ -26,9 +26,9 @@
   },
   "homepage": "https://github.com/jkyberneees/fast-gateway#readme",
   "dependencies": {
-    "fast-proxy": "^1.1.0",
+    "fast-proxy": "^1.1.1",
     "http-cache-middleware": "^1.0.0",
-    "restana": "^3.1.0"
+    "restana": "^3.1.1"
   },
   "devDependencies": {
     "chai": "^4.2.0",
