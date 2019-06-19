@@ -1,5 +1,7 @@
 const fastProxy = require('fast-proxy')
 const restana = require('restana')
+const pump = require('pump')
+const toArray = require('stream-to-array')
 
 const gateway = (opts) => {
   opts = Object.assign({
@@ -24,6 +26,7 @@ const gateway = (opts) => {
     // populating required NOOPS
     route.hooks = route.hooks || {}
     route.hooks.onRequest = route.hooks.onRequest || onRequestNoOp
+    route.hooks.onResponse = route.hooks.onResponse || onResponse
 
     // populating pathRegex if missing
     route.pathRegex = undefined === route.pathRegex ? opts.pathRegex : String(route.pathRegex)
@@ -52,5 +55,20 @@ const handler = (route, proxy) => async (req, res) => {
 }
 
 const onRequestNoOp = (req, res) => { }
+const onResponse = async (req, res, stream) => {
+  if (!res.hasHeader('content-length')) {
+    try {
+      const resBuffer = Buffer.concat(await toArray(stream))
+      res.statusCode = stream.statusCode
+      res.setHeader('content-length', '' + Buffer.byteLength(resBuffer))
+      res.end(resBuffer)
+    } catch (err) {
+      res.send(err)
+    }
+  } else {
+    res.statusCode = stream.statusCode
+    pump(stream, res)
+  }
+}
 
 module.exports = gateway
