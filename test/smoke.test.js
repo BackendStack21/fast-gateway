@@ -230,7 +230,7 @@ describe('API Gateway', () => {
 
   it('POST /users/info - 404', async () => {
     await request(gateway)
-      .post('/users/find')
+      .post('/users/info')
       .expect(404)
   })
 
