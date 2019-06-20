@@ -71,8 +71,6 @@ service.start(3000)
       onResponse (req, res, stream) {  
         // do some post-processing here
         // ...
-        // Default implementation: 
-        pump(stream, res)
       }
 
       // other options allowed https://www.npmjs.com/package/fast-proxy#opts
@@ -80,6 +78,29 @@ service.start(3000)
   }]
 }
 ```
+### onResponse Hook default implementation
+For developers reference, next we describe how the default `onResponse` hook looks like: 
+```js
+const pump = require('pump')
+const toArray = require('stream-to-array')
+
+const onResponse = async (req, res, stream) => {
+  if (!res.hasHeader('content-length')) {
+    try {
+      const resBuffer = Buffer.concat(await toArray(stream))
+      res.statusCode = stream.statusCode
+      res.setHeader('content-length', '' + Buffer.byteLength(resBuffer))
+      res.end(resBuffer)
+    } catch (err) {
+      res.send(err)
+    }
+  } else {
+    res.statusCode = stream.statusCode
+    pump(stream, res)
+  }
+}
+```
+
 ## Gateway level caching
 ### Why?
 > Because `caching` is the last mile for low latency distributed systems!  

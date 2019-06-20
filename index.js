@@ -59,8 +59,8 @@ const onResponse = async (req, res, stream) => {
   if (!res.hasHeader('content-length')) {
     try {
       const resBuffer = Buffer.concat(await toArray(stream))
-      res.statusCode = stream.statusCode
       res.setHeader('content-length', '' + Buffer.byteLength(resBuffer))
+      res.statusCode = stream.statusCode
       res.end(resBuffer)
     } catch (err) {
       res.send(err)
