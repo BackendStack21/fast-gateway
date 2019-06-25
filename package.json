@@ -27,8 +27,8 @@
   "homepage": "https://github.com/jkyberneees/fast-gateway#readme",
   "dependencies": {
     "fast-proxy": "^1.1.2",
-    "http-cache-middleware": "^1.1.0",
-    "restana": "^3.2.1",
+    "http-cache-middleware": "^1.1.1",
+    "restana": "^3.2.2",
     "stream-to-array": "^2.3.0"
   },
   "devDependencies": {
