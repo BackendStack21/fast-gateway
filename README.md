@@ -1,6 +1,10 @@
 # fast-gateway
 A super fast Node.js API Gateway for the masses!  
-> Here you can optionally read more about it: https://medium.com/sharenowtech/k-fastify-gateway-a-node-js-api-gateway-that-you-control-e7388c229b21
+
+## Medium articles:
+- https://medium.com/@kyberneees/node-js-api-gateway-a-developer-perspective-8defe575ed21
+- https://medium.com/sharenowtech/k-fastify-gateway-a-node-js-api-gateway-that-you-control-e7388c229b21
+
 
 ## Install
 ```js
@@ -102,6 +106,8 @@ const onResponse = async (req, res, stream) => {
 ```
 
 ## Gateway level caching
+Caching support is provided by the `http-cache-middleware` module. https://www.npmjs.com/package/http-cache-middleware
+
 ### Why?
 > Because `caching` is the last mile for low latency distributed systems!  
 
