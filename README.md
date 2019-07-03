@@ -157,7 +157,7 @@ const server = gateway({
 ```
 > Required if there are more than one gateway instances
 
-### How to cache endpoints response?
+### How to cache remote services endpoints response?
 https://github.com/jkyberneees/http-cache-middleware#enabling-cache-for-service-endpoints
 
 ### How to invalidate caches?
