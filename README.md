@@ -114,6 +114,7 @@ Caching support is provided by the `http-cache-middleware` module. https://www.n
 Enabling proper caching strategies at gateway level will drastically reduce the latency of your system,
 as it reduces network round-trips and remote services processing.  
 We are talking here about improvements in response times from `X ms` to `~2ms`, as an example.  
+> We use the `http-cache-middleware` module to support gateway level caching. Read more about it: https://github.com/jkyberneees/http-cache-middleware
 
 ###  Setting up gateway level cache available for all services
 #### Single node cache (memory):
@@ -156,45 +157,12 @@ const server = gateway({
 ```
 > Required if there are more than one gateway instances
 
-### Enabling cache for service endpoints
-Although API Gateway level cache aims as a centralized cache for all services behind the wall, are the services
-the ones who indicate the responses to be cached and for how long.  
+### How to cache endpoints response?
+https://github.com/jkyberneees/http-cache-middleware#enabling-cache-for-service-endpoints
 
-Cache entries will be created for all remote responses coming with the `x-cache-timeout` header:
-```js
-res.setHeader('x-cache-timeout', '1 hour')
-```
-> Here we use the [`ms`](`https://www.npmjs.com/package/ms`) package to convert timeout to seconds. Please note that `millisecond` unit is not supported!  
+### How to invalidate caches?
+https://github.com/jkyberneees/http-cache-middleware#invalidating-caches
 
-Example on remote service using `restana`:
-```js
-service.get('/numbers', (req, res) => {
-  res.setHeader('x-cache-timeout', '1 hour')
-
-  res.send([
-    1, 2, 3
-  ])
-})
-```
-
-### Invalidating cache
-> Let's face it, gateway level cache invalidation was complex..., until now!  
-
-Remote services can also expire cache entries on demand, i.e: when the data state changes. Here we use the `x-cache-expire` header to indicate the gateway cache entries to expire using a matching pattern:
-```js
-res.setHeader('x-cache-expire', '*/numbers')
-```
-> Here we use the [`matcher`](`https://www.npmjs.com/package/matcher`) package for matching patterns evaluation.
-
-Example on remote service using `restana`:
-```js
-service.patch('/numbers', (req, res) => {
-  res.setHeader('x-cache-expire', '*/numbers')
-
-  // ...
-  res.send(200)
-})
-```
 
 ### Custom cache keys
 Cache keys are generated using: `req.method + req.url`, however, for indexing/segmenting requirements it makes sense to allow cache keys extensions.  
