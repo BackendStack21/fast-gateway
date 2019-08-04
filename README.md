@@ -55,6 +55,12 @@ service.start(3000)
     pathRegex: '/*',
     // route prefix
     prefix: '/public',
+    // Optional documentation configuration (unrestricted schema)
+    docs: {
+      name: 'Public Service',
+      endpoint: '/api-docs',
+      type: 'swagger'
+    },
     // Optional "prefix rewrite" before request is forwarded. Default value: ''
     prefixRewrite: '',
     // Remote HTTP server URL to forward the request
@@ -104,6 +110,26 @@ const onResponse = async (req, res, stream) => {
   }
 }
 ```
+## The "*GET /services.json*" endpoint
+Since version `1.3.5` the gateway exposes minimal documentation about  registered services at: `GET /services.json`
+
+Example output:
+```json
+[  
+   {  
+      "prefix":"/public",
+      "docs":{  
+         "name":"Public Service",
+         "endpoint":"/swagger.json",
+         "type":"swagger"
+      }
+   },
+   {  
+      "prefix":"/admin"
+   }
+]
+```
+> NOTE: Please see `docs` configuration entry explained above.
 
 ## Gateway level caching
 Caching support is provided by the `http-cache-middleware` module. https://www.npmjs.com/package/http-cache-middleware
