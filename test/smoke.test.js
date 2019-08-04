@@ -47,6 +47,22 @@ describe('API Gateway', () => {
     await remote.start(3000)
   })
 
+  it('services.json contains registered services', async () => {
+    await request(gateway)
+      .get('/services.json')
+      .expect(200)
+      .then((response) => {
+        expect(response.body.find(service => service.prefix === '/users')).to.deep.equal({
+          prefix: '/users',
+          docs: {
+            name: 'Users Service',
+            endpoint: 'swagger.json',
+            type: 'swagger'
+          }
+        })
+      })
+  })
+
   it('remote is proxied /users/response-time/204 - 204', async () => {
     await request(gateway)
       .post('/users/response-time/204')
