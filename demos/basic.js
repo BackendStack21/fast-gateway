@@ -9,7 +9,12 @@ gateway({
 
   routes: [{
     prefix: '/public',
-    target: 'http://public.myapp:300'
+    target: 'http://public.myapp:300',
+    docs: {
+      name: 'Public Service',
+      endpoint: 'swagger.json',
+      type: 'swagger'
+    }
   }, {
     prefix: '/admin',
     target: 'http://admin.myapp:3000',

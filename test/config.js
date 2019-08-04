@@ -23,7 +23,12 @@ module.exports = async () => {
       }
     }, {
       prefix: '/users',
-      target: 'http://localhost:3000'
+      target: 'http://localhost:3000',
+      docs: {
+        name: 'Users Service',
+        endpoint: 'swagger.json',
+        type: 'swagger'
+      }
     }, {
       prefix: '/users/proxy-aborted',
       target: 'http://localhost:5000',

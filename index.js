@@ -18,6 +18,16 @@ const gateway = (opts) => {
     server.use(middleware)
   })
 
+  // registering services.json
+  const services = opts.routes.map(route => ({
+    prefix: route.prefix,
+    docs: route.docs
+  }))
+  server.get('/services.json', (req, res) => {
+    res.send(services)
+  })
+
+  // processing routes
   opts.routes.forEach(route => {
     if (undefined === route.prefixRewrite) {
       route.prefixRewrite = ''
