@@ -111,7 +111,7 @@ const onResponse = async (req, res, stream) => {
 }
 ```
 ## The "*GET /services.json*" endpoint
-Since version `1.3.5` the gateway exposes minimal documentation about  registered services at: `GET /services.json`
+Since version `1.3.5` the gateway exposes minimal documentation about registered services at: `GET /services.json`
 
 Example output:
 ```json
