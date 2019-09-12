@@ -43,7 +43,7 @@ const gateway = (opts) => {
 
     // instantiate route proxy
     const { proxy } = fastProxy({
-      base: route.target,
+      base: opts.targetOverride || route.target,
       http2: !!route.http2,
       ...(opts.fastProxy)
     })

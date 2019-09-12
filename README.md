@@ -42,6 +42,8 @@ service.start(3000)
   middlewares: [],
   // Optional global value for routes "pathRegex". Default value: '/*'
   pathRegex: '/*',
+  // Optional "target" value that overrides the routes "target" config value. Feature intended for testing purposes.
+  targetOverride: "https://yourdev.api-gateway.com",
 
   // HTTP proxy
   routes: [{
