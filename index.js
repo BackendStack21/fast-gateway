@@ -2,6 +2,7 @@ const fastProxy = require('fast-proxy')
 const restana = require('restana')
 const pump = require('pump')
 const toArray = require('stream-to-array')
+const defaultProxyHandler = (req, res, url, proxy, proxyOpts) => proxy(req, res, url, proxyOpts)
 
 const gateway = (opts) => {
   opts = Object.assign({
@@ -48,19 +49,31 @@ const gateway = (opts) => {
       ...(opts.fastProxy)
     })
 
+    // route proxy handler function
+    const proxyHandler = route.proxyHandler || defaultProxyHandler
+
+    // populating timeout config
+    route.timeout = route.timeout || opts.timeout
+
     // registering route handler
     const methods = route.methods || ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT', 'OPTIONS']
-    server.route(methods, route.prefix + route.pathRegex, handler(route, proxy), null, route.middlewares)
+    server.route(methods, route.prefix + route.pathRegex, handler(route, proxy, proxyHandler), null, route.middlewares)
   })
 
   return server
 }
 
-const handler = (route, proxy) => async (req, res) => {
+const handler = (route, proxy, proxyHandler) => async (req, res) => {
   req.url = req.url.replace(route.prefix, route.prefixRewrite)
   const shouldAbortProxy = await route.hooks.onRequest(req, res)
   if (!shouldAbortProxy) {
-    proxy(req, res, req.url, Object.assign({}, route.hooks))
+    const proxyOpts = Object.assign({
+      request: {
+        timeout: req.timeout || route.timeout
+      }
+    }, route.hooks)
+
+    proxyHandler(req, res, req.url, proxy, proxyOpts)
   }
 }
 
