@@ -33,6 +33,11 @@ describe('API Gateway', () => {
       res.setHeader('x-cache-expire', 'GET/users/*')
       res.send({})
     })
+    remote.get('/longop', (req, res) => {
+      setTimeout(() => {
+        res.send({})
+      }, 2000)
+    })
     remote.post('/204', (req, res) => res.send(204))
     remote.get('/endpoint-proxy-methods', (req, res) => res.send({
       name: 'endpoint-proxy-methods'
@@ -153,6 +158,12 @@ describe('API Gateway', () => {
       .then((response) => {
         expect(response.headers['x-cache-hit']).to.equal(undefined)
       })
+  })
+
+  it('Should timeout on GET /longop - 504', async () => {
+    return request(gateway)
+      .get('/users/longop')
+      .expect(504)
   })
 
   it('GET /users/info - 200', async () => {
