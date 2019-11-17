@@ -140,8 +140,9 @@ Example output:
 > NOTE: Please see `docs` configuration entry explained above.
 
 ## Timeouts and Unavailability 
-We can restrict requests timeouts globally, at service level using the `timeout` configuration.  
-To define an endpoint specific timeout, you can use the property `timeout` of the request object, normally inside a middleware:
+We can restrict requests timeouts globally or at service level using the `timeout` configuration.  
+
+You can also define endpoints specific timeout using the property `timeout` of the request object, normally inside a middleware:
 ```js
 req.timeout = 500 // define a 500ms timeout on a custom request.
 ```
