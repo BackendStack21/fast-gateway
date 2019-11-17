@@ -53,7 +53,7 @@ service.start(3000)
     // base parameter defined as the route target. Default value: {}
     fastProxy: {},
     // Optional proxy handler function. Default value: (req, res, url, proxy, proxyOpts) => proxy(req, res, url, proxyOpts)
-    proxyHandler: () => {}
+    proxyHandler: () => {},
     // Optional flag to indicate if target uses the HTTP2 protocol. Default value: false
     http2: false,
     // Optional path matching regex. Default value: '/*'
