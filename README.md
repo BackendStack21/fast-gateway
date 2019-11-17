@@ -42,6 +42,8 @@ service.start(3000)
   middlewares: [],
   // Optional global value for routes "pathRegex". Default value: '/*'
   pathRegex: '/*',
+  // Optional global requests timeout value (given in milliseconds). Default value: '0' (DISABLED)
+  timeout: 0,
   // Optional "target" value that overrides the routes "target" config value. Feature intended for testing purposes.
   targetOverride: "https://yourdev.api-gateway.com",
 
@@ -50,11 +52,15 @@ service.start(3000)
     // Optional `fast-proxy` library configuration (https://www.npmjs.com/package/fast-proxy#options)
     // base parameter defined as the route target. Default value: {}
     fastProxy: {},
+    // Optional proxy handler function. Default value: (req, res, url, proxy, proxyOpts) => proxy(req, res, url, proxyOpts)
+    proxyHandler: () => {}
     // Optional flag to indicate if target uses the HTTP2 protocol. Default value: false
     http2: false,
     // Optional path matching regex. Default value: '/*'
     // In order to disable the 'pathRegex' at all, you can use an empty string: ''
     pathRegex: '/*',
+    // Optional service requests timeout value (given in milliseconds). Default value: '0' (DISABLED)
+    timeout: 0,
     // route prefix
     prefix: '/public',
     // Optional documentation configuration (unrestricted schema)
@@ -132,6 +138,19 @@ Example output:
 ]
 ```
 > NOTE: Please see `docs` configuration entry explained above.
+
+## Timeouts and Unavailability 
+We can restrict requests timeouts globally, at service level using the `timeout` configuration.  
+To define an endpoint specific timeout, you can use the property `timeout` of the request object, normally inside a middleware:
+```js
+req.timeout = 500 // define a 500ms timeout on a custom request.
+```
+> NOTE: You might want to also check https://www.npmjs.com/package/middleware-if-unless
+
+### Circuit Breaker
+By using the `proxyHandler` hook, developers can optionally intercept and modify the default gateway routing behavior right before the origin request is proxied to the remote service. Therefore, connecting advanced monitoring mechanisms like [Circuit Breakers](https://martinfowler.com/bliki/CircuitBreaker.html) is rather simple. 
+
+Please see the `demos/circuitbreaker.js` example for more details using the `opossum` library.
 
 ## Gateway level caching
 Caching support is provided by the `http-cache-middleware` module. https://www.npmjs.com/package/http-cache-middleware

@@ -2,6 +2,8 @@ const pump = require('pump')
 
 module.exports = async () => {
   return {
+    timeout: 1.5 * 1000,
+
     middlewares: [
       require('cors')(),
       require('http-cache-middleware')()
