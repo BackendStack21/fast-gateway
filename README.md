@@ -148,7 +148,7 @@ req.timeout = 500 // define a 500ms timeout on a custom request.
 ```
 > NOTE: You might want to also check https://www.npmjs.com/package/middleware-if-unless
 
-### Circuit Breaker
+### Circuit Breakers
 By using the `proxyHandler` hook, developers can optionally intercept and modify the default gateway routing behavior right before the origin request is proxied to the remote service. Therefore, connecting advanced monitoring mechanisms like [Circuit Breakers](https://martinfowler.com/bliki/CircuitBreaker.html) is rather simple. 
 
 Please see the `demos/circuitbreaker.js` example for more details using the `opossum` library.
