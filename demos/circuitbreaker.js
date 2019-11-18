@@ -29,12 +29,7 @@ gateway({
   routes: [{
     proxyHandler: (...params) => breaker.fire(params),
     prefix: '/public',
-    target: 'http://localhost:3000',
-    docs: {
-      name: 'Public Service',
-      endpoint: 'swagger.json',
-      type: 'swagger'
-    }
+    target: 'http://localhost:3000'
   }]
 }).start(8080).then(() => console.log('API Gateway listening on 8080 port!'))
 
