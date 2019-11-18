@@ -10,10 +10,7 @@ const options = {
 const breaker = new CircuitBreaker(([req, res, url, proxy, proxyOpts]) => {
   return new Promise((resolve, reject) => {
     proxy(req, res, url, proxyOpts)
-    onEnd(res, () => {
-      // you can optionally evaluate response codes here...
-      resolve()
-    })
+    onEnd(res, () => resolve()) // you can optionally evaluate response codes here...
   })
 }, options)
 
