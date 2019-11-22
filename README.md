@@ -153,6 +153,38 @@ By using the `proxyHandler` hook, developers can optionally intercept and modify
 
 Please see the `demos/circuitbreaker.js` example for more details using the `opossum` library.
 
+## Rate Limiting
+[Rate limiting](https://en.wikipedia.org/wiki/Rate_limiting), as well many other gateway level features can be easily implemented using `fast-gateway`:
+```js
+const rateLimit = require('express-rate-limit')
+const requestIp = require('request-ip')
+
+gateway({
+  middlewares: [
+    // first acquire request IP
+    (req, res, next) => {
+      req.ip = requestIp.getClientIp(req)
+      return next()
+    },
+    // second enable rate limiter
+    rateLimit({
+      windowMs: 1 * 60 * 1000, // 1 minutes
+      max: 60, // limit each IP to 60 requests per windowMs
+      handler: (req, res) => res.send('Too many requests, please try again later.', 429)
+    })
+  ],
+
+  // your downstream services
+  routes: [{
+    prefix: '/public',
+    target: 'http://localhost:3000'
+  }, {
+    // ...
+  }]
+})
+```
+> In this example we have used the [express-rate-limit](https://www.npmjs.com/package/express-rate-limit) module.
+
 ## Gateway level caching
 Caching support is provided by the `http-cache-middleware` module. https://www.npmjs.com/package/http-cache-middleware
 
