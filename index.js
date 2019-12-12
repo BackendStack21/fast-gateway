@@ -10,7 +10,7 @@ const gateway = (opts) => {
     pathRegex: '/*'
   }, opts)
 
-  const server = restana(opts.restana || {
+  const server = (opts.restana instanceof Function) ? opts.restana() : restana(opts.restana || {
     disableResponseEvent: true
   })
 

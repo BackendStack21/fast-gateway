@@ -36,6 +36,7 @@ service.start(3000)
 ```js
 {
   // Optional restana library configuration (https://www.npmjs.com/package/restana#configuration)
+  // If the given value is a function instead of an object, it will be considered a restana service factory.
   restana: {},
   // Optional global middlewares in the format: (req, res, next) => next() 
   // Default value: []
