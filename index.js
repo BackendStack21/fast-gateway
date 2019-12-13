@@ -3,6 +3,7 @@ const restana = require('restana')
 const pump = require('pump')
 const toArray = require('stream-to-array')
 const defaultProxyHandler = (req, res, url, proxy, proxyOpts) => proxy(req, res, url, proxyOpts)
+const DEFAULT_METHODS = require('restana/libs/methods')
 
 const gateway = (opts) => {
   opts = Object.assign({
@@ -55,9 +56,22 @@ const gateway = (opts) => {
     // populating timeout config
     route.timeout = route.timeout || opts.timeout
 
-    // registering route handler
-    const methods = route.methods || ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT', 'OPTIONS']
-    server.route(methods, route.prefix + route.pathRegex, handler(route, proxy, proxyHandler), null, route.middlewares)
+    // registering route handlers
+    const methods = route.methods || DEFAULT_METHODS
+    methods.forEach(method => {
+      method = method.toLowerCase()
+
+      if (server[method]) {
+        server[method](
+        // path
+          route.prefix + route.pathRegex,
+          // route handler
+          handler(route, proxy, proxyHandler),
+          // route middlewares
+          route.middlewares
+        )
+      }
+    })
   })
 
   return server
