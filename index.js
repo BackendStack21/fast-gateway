@@ -1,9 +1,12 @@
+/* eslint-disable no-useless-call */
+
 const fastProxy = require('fast-proxy')
 const restana = require('restana')
 const pump = require('pump')
 const toArray = require('stream-to-array')
 const defaultProxyHandler = (req, res, url, proxy, proxyOpts) => proxy(req, res, url, proxyOpts)
 const DEFAULT_METHODS = require('restana/libs/methods')
+const send = require('@polka/send-type')
 
 const gateway = (opts) => {
   opts = Object.assign({
@@ -11,9 +14,9 @@ const gateway = (opts) => {
     pathRegex: '/*'
   }, opts)
 
-  const server = (opts.restana instanceof Function) ? opts.restana() : restana(opts.restana || {
+  const server = opts.server || ((opts.restana instanceof Function) ? opts.restana() : restana(opts.restana || {
     disableResponseEvent: true
-  })
+  }))
 
   // registering global middlewares
   opts.middlewares.forEach(middleware => {
@@ -26,7 +29,7 @@ const gateway = (opts) => {
     docs: route.docs
   }))
   server.get('/services.json', (req, res) => {
-    res.send(services)
+    send(res, 200, services)
   })
 
   // processing routes
@@ -39,6 +42,9 @@ const gateway = (opts) => {
     route.hooks = route.hooks || {}
     route.hooks.onRequest = route.hooks.onRequest || onRequestNoOp
     route.hooks.onResponse = route.hooks.onResponse || onResponse
+
+    // populating route middlewares
+    route.middlewares = route.middlewares || []
 
     // populating pathRegex if missing
     route.pathRegex = undefined === route.pathRegex ? opts.pathRegex : String(route.pathRegex)
@@ -62,14 +68,14 @@ const gateway = (opts) => {
       method = method.toLowerCase()
 
       if (server[method]) {
-        server[method](
-        // path
+        server[method].apply(server, [
+          // path
           route.prefix + route.pathRegex,
-          // route handler
-          handler(route, proxy, proxyHandler),
           // route middlewares
-          route.middlewares
-        )
+          ...route.middlewares,
+          // route handler
+          handler(route, proxy, proxyHandler)
+        ])
       }
     })
   })
@@ -100,7 +106,8 @@ const onResponse = async (req, res, stream) => {
       res.statusCode = stream.statusCode
       res.end(resBuffer)
     } catch (err) {
-      res.send(err)
+      res.statusCode = 500
+      res.end(err.message)
     }
   } else {
     res.statusCode = stream.statusCode

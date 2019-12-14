@@ -1,5 +1,5 @@
 # fast-gateway
-A super fast Node.js API Gateway for the masses!  
+A super fast, framework agnostic Node.js API Gateway for the masses ❤️
 
 ## Medium articles:
 - https://medium.com/@kyberneees/node-js-api-gateway-a-developer-perspective-8defe575ed21
@@ -35,8 +35,16 @@ service.start(3000)
 ## Configuration options explained
 ```js
 {
+  // Optional server instance. Any HTTP framework that supports the following signature is compatible:
+  // - server[HTTP_METHOD](pattern, [middleware1, middleware2,], handler)
+  // 
+  // Known compatible frameworks: Restana, Express.js
+  // If omitted, restana is used as default HTTP framework
+  server, 
   // Optional restana library configuration (https://www.npmjs.com/package/restana#configuration)
-  // If the given value is a function instead of an object, it will be considered a restana service factory.
+  // If the given value is a function instead of an object, it will be considered a restana server factory.
+  //
+  // If "server" is provided, this settings are ignored.
   restana: {},
   // Optional global middlewares in the format: (req, res, next) => next() 
   // Default value: []
