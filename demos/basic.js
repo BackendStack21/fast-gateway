@@ -9,7 +9,7 @@ gateway({
 
   routes: [{
     prefix: '/public',
-    target: 'http://public.myapp:300',
+    target: 'http://localhost:3000',
     docs: {
       name: 'Public Service',
       endpoint: 'swagger.json',
@@ -17,7 +17,7 @@ gateway({
     }
   }, {
     prefix: '/admin',
-    target: 'http://admin.myapp:3000',
+    target: 'http://localhost:3001',
     middlewares: [
       require('express-jwt')({
         secret: 'shhhhhhared-secret'
@@ -27,3 +27,13 @@ gateway({
 }).start(PORT).then(server => {
   console.log(`API Gateway listening on ${PORT} port!`)
 })
+
+const service1 = require('restana')({})
+service1
+  .get('/hi', (req, res) => res.send('Hello World!'))
+  .start(3000).then(() => console.log('Public service listening on 3000 port!'))
+
+const service2 = require('restana')({})
+service2
+  .get('/users', (req, res) => res.send([]))
+  .start(3001).then(() => console.log('Admin service listening on 3001 port!'))
