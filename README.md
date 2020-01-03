@@ -41,10 +41,9 @@ service.start(3000)
   // Known compatible frameworks: Restana, Express.js
   // If omitted, restana is used as default HTTP framework
   server, 
-  // Optional restana library configuration (https://www.npmjs.com/package/restana#configuration)
-  // If the given value is a function instead of an object, it will be considered a restana server factory.
-  //
-  // If "server" is provided, this settings are ignored.
+  // Optional restana library configuration (https://www.npmjs.com/package/restana#configuration)  
+  // 
+  // Please note that if "server" is provided, this settings are ignored.
   restana: {},
   // Optional global middlewares in the format: (req, res, next) => next() 
   // Default value: []
