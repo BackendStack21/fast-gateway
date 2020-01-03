@@ -83,17 +83,21 @@ const gateway = (opts) => {
   return server
 }
 
-const handler = (route, proxy, proxyHandler) => async (req, res) => {
-  req.url = req.url.replace(route.prefix, route.prefixRewrite)
-  const shouldAbortProxy = await route.hooks.onRequest(req, res)
-  if (!shouldAbortProxy) {
-    const proxyOpts = Object.assign({
-      request: {
-        timeout: req.timeout || route.timeout
-      }
-    }, route.hooks)
+const handler = (route, proxy, proxyHandler) => async (req, res, next) => {
+  try {
+    req.url = req.url.replace(route.prefix, route.prefixRewrite)
+    const shouldAbortProxy = await route.hooks.onRequest(req, res)
+    if (!shouldAbortProxy) {
+      const proxyOpts = Object.assign({
+        request: {
+          timeout: req.timeout || route.timeout
+        }
+      }, route.hooks)
 
-    proxyHandler(req, res, req.url, proxy, proxyOpts)
+      proxyHandler(req, res, req.url, proxy, proxyOpts)
+    }
+  } catch (err) {
+    return next(err)
   }
 }
 
