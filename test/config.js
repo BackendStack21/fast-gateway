@@ -51,10 +51,8 @@ module.exports = async () => {
       prefix: '/users/on-request-error',
       target: 'http://localhost:3000',
       hooks: {
-        onRequest (req, res) {
-          res.send(Error('ups, pre-processing error...'))
-
-          return true
+        async onRequest (req, res) {
+          throw new Error('ups, pre-processing error...')
         }
       }
     }, {
