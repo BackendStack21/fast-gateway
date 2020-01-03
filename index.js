@@ -5,7 +5,7 @@ const restana = require('restana')
 const pump = require('pump')
 const toArray = require('stream-to-array')
 const defaultProxyHandler = (req, res, url, proxy, proxyOpts) => proxy(req, res, url, proxyOpts)
-const DEFAULT_METHODS = require('restana/libs/methods')
+const DEFAULT_METHODS = require('restana/libs/methods').filter(method => method !== 'all')
 const send = require('@polka/send-type')
 
 const gateway = (opts) => {
@@ -14,9 +14,7 @@ const gateway = (opts) => {
     pathRegex: '/*'
   }, opts)
 
-  const server = opts.server || ((opts.restana instanceof Function) ? opts.restana() : restana(opts.restana || {
-    disableResponseEvent: true
-  }))
+  const server = opts.server || restana(opts.restana)
 
   // registering global middlewares
   opts.middlewares.forEach(middleware => {
@@ -64,18 +62,20 @@ const gateway = (opts) => {
 
     // registering route handlers
     const methods = route.methods || DEFAULT_METHODS
+
+    const args = [
+      // path
+      route.prefix + route.pathRegex,
+      // route middlewares
+      ...route.middlewares,
+      // route handler
+      handler(route, proxy, proxyHandler)
+    ]
+
     methods.forEach(method => {
       method = method.toLowerCase()
-
       if (server[method]) {
-        server[method].apply(server, [
-          // path
-          route.prefix + route.pathRegex,
-          // route middlewares
-          ...route.middlewares,
-          // route handler
-          handler(route, proxy, proxyHandler)
-        ])
+        server[method].apply(server, args)
       }
     })
   })

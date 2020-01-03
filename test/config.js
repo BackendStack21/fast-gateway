@@ -24,12 +24,16 @@ module.exports = async () => {
         onResponse (req, res, stream) { pump(stream, res) }
       }
     }, {
-      prefix: '/users',
+      prefix: '/users/response-time',
+      prefixRewrite: '',
       target: 'http://localhost:3000',
-      docs: {
-        name: 'Users Service',
-        endpoint: 'swagger.json',
-        type: 'swagger'
+      middlewares: [require('response-time')()],
+      hooks: {
+        rewriteHeaders (headers) {
+          headers['post-processed'] = true
+
+          return headers
+        }
       }
     }, {
       prefix: '/users/proxy-aborted',
@@ -44,24 +48,22 @@ module.exports = async () => {
         }
       }
     }, {
-      prefix: '/users/response-time',
-      prefixRewrite: '',
-      target: 'http://localhost:3000',
-      middlewares: [require('response-time')()],
-      hooks: {
-        rewriteHeaders (headers) {
-          headers['post-processed'] = true
-
-          return headers
-        }
-      }
-    }, {
       prefix: '/users/on-request-error',
       target: 'http://localhost:3000',
       hooks: {
-        async onRequest (req, res) {
-          throw new Error('ups, pre-processing error...')
+        onRequest (req, res) {
+          res.send(Error('ups, pre-processing error...'))
+
+          return true
         }
+      }
+    }, {
+      prefix: '/users',
+      target: 'http://localhost:3000',
+      docs: {
+        name: 'Users Service',
+        endpoint: 'swagger.json',
+        type: 'swagger'
       }
     },
     {
