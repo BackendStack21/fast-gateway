@@ -1,6 +1,6 @@
 {
   "name": "fast-gateway",
-  "version": "2.0.2",
+  "version": "2.1.0",
   "description": "A Node.js API Gateway for the masses!",
   "main": "index.js",
   "scripts": {
@@ -27,7 +27,7 @@
   "homepage": "https://github.com/jkyberneees/fast-gateway#readme",
   "dependencies": {
     "@polka/send-type": "^0.5.2",
-    "fast-proxy": "^1.3.0",
+    "fast-proxy": "^1.4.0",
     "http-cache-middleware": "^1.2.3",
     "restana": "^4.0.7",
     "stream-to-array": "^2.3.0"
@@ -41,7 +41,7 @@
     "helmet": "^3.21.2",
     "mocha": "^6.2.2",
     "nyc": "^14.1.1",
-    "opossum": "^4.2.3",
+    "opossum": "^4.2.4",
     "request-ip": "^2.1.3",
     "response-time": "^2.3.2",
     "standard": "^14.3.1",
