@@ -103,20 +103,40 @@ const handler = (route, proxy, proxyHandler) => async (req, res, next) => {
 
 const onRequestNoOp = (req, res) => { }
 const onResponse = async (req, res, stream) => {
-  if (!res.hasHeader('content-length')) {
+  const TRANSFER_ENCODING_HEADER_NAME = 'transfer-encoding'
+  const chunked = stream.headers[TRANSFER_ENCODING_HEADER_NAME]
+    ? stream.headers[TRANSFER_ENCODING_HEADER_NAME].endsWith('chunked')
+    : false
+
+  if (req.headers.connection === 'close' && chunked) {
     try {
-      const resBuffer = Buffer.concat(await toArray(stream))
-      res.setHeader('content-length', '' + Buffer.byteLength(resBuffer))
-      res.statusCode = stream.statusCode
-      res.end(resBuffer)
+      // remove transfer-encoding header
+      const transferEncoding = stream.headers[TRANSFER_ENCODING_HEADER_NAME].replace(/(,( )?)?chunked/, '')
+      if (transferEncoding) {
+        res.setHeader(TRANSFER_ENCODING_HEADER_NAME, transferEncoding)
+      } else {
+        res.removeHeader(TRANSFER_ENCODING_HEADER_NAME)
+      }
+
+      if (!stream.headers['content-length']) {
+      // pack all pieces into 1 buffer to calculate content length
+        const resBuffer = Buffer.concat(await toArray(stream))
+
+        // add content-length header and send the merged response buffer
+        res.setHeader('content-length', '' + Buffer.byteLength(resBuffer))
+        res.statusCode = stream.statusCode
+        res.end(resBuffer)
+
+        return
+      }
     } catch (err) {
       res.statusCode = 500
       res.end(err.message)
     }
-  } else {
-    res.statusCode = stream.statusCode
-    pump(stream, res)
   }
+
+  res.statusCode = stream.statusCode
+  pump(stream, res)
 }
 
 module.exports = gateway

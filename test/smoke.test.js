@@ -19,6 +19,11 @@ describe('API Gateway', () => {
     remote.get('/info', (req, res) => res.send({
       name: 'fastify-gateway'
     }))
+    remote.get('/chunked', (req, res) => {
+      res.write('user')
+      res.write('1')
+      res.end()
+    })
     remote.get('/cache', (req, res) => {
       res.setHeader('x-cache-timeout', '1 second')
       res.send({
@@ -279,7 +284,28 @@ describe('API Gateway', () => {
       })
   })
 
-  it('close', async () => {
+  it('(Connection: close) chunked transfer-encoding support', async () => {
+    await request(gateway)
+      .get('/users/chunked')
+      .set({ Connection: 'close' })
+      .expect(200)
+      .then((response) => {
+        expect(response.text).to.equal('user1')
+      })
+  })
+
+  it('(Connection: keep-alive) chunked transfer-encoding support', async () => {
+    await request(gateway)
+      .get('/users/chunked')
+      .set('Connection', 'keep-alive')
+      .then((res) => {
+        expect(res.text).to.equal('user1')
+      })
+  })
+
+  it('close', async function () {
+    this.timeout(10 * 1000)
+
     await remote.close()
     await gateway.close()
   })
