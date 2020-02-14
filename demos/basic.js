@@ -31,6 +31,11 @@ gateway({
 const service1 = require('restana')({})
 service1
   .get('/hi', (req, res) => res.send('Hello World!'))
+  .get('/hi-chunked', (req, res) => {
+    res.write('Hello ')
+    res.write('World!')
+    res.end()
+  })
   .start(3000).then(() => console.log('Public service listening on 3000 port!'))
 
 const service2 = require('restana')({})
