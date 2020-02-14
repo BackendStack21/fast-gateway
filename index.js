@@ -7,6 +7,7 @@ const toArray = require('stream-to-array')
 const defaultProxyHandler = (req, res, url, proxy, proxyOpts) => proxy(req, res, url, proxyOpts)
 const DEFAULT_METHODS = require('restana/libs/methods').filter(method => method !== 'all')
 const send = require('@polka/send-type')
+const TRANSFER_ENCODING_HEADER_NAME = 'transfer-encoding'
 
 const gateway = (opts) => {
   opts = Object.assign({
@@ -103,7 +104,6 @@ const handler = (route, proxy, proxyHandler) => async (req, res, next) => {
 
 const onRequestNoOp = (req, res) => { }
 const onResponse = async (req, res, stream) => {
-  const TRANSFER_ENCODING_HEADER_NAME = 'transfer-encoding'
   const chunked = stream.headers[TRANSFER_ENCODING_HEADER_NAME]
     ? stream.headers[TRANSFER_ENCODING_HEADER_NAME].endsWith('chunked')
     : false
