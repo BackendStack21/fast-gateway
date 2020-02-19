@@ -109,9 +109,9 @@ For developers reference, next we describe how the default `onResponse` hook loo
 ```js
 const pump = require('pump')
 const toArray = require('stream-to-array')
+const TRANSFER_ENCODING_HEADER_NAME = 'transfer-encoding'
 
 const onResponse = async (req, res, stream) => {
-  const TRANSFER_ENCODING_HEADER_NAME = 'transfer-encoding'
   const chunked = stream.headers[TRANSFER_ENCODING_HEADER_NAME]
     ? stream.headers[TRANSFER_ENCODING_HEADER_NAME].endsWith('chunked')
     : false
