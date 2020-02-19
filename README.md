@@ -321,3 +321,6 @@ Benchmark scripts can be found in benchmark folder.
 
 - fast-gateway: **18069.77** reqs/secs
 - k-fastify-gateway: 9763.61 reqs/secs
+
+## Sponsors
+- Kindly sponsored by [ShareNow](https://www.share-now.com/), a company that promotes innovation!  
