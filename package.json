@@ -29,7 +29,7 @@
     "@polka/send-type": "^0.5.2",
     "fast-proxy": "^1.4.1",
     "http-cache-middleware": "^1.2.5",
-    "restana": "^4.0.7",
+    "restana": "^4.0.8",
     "stream-to-array": "^2.3.0"
   },
   "devDependencies": {
