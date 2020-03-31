@@ -33,6 +33,7 @@
     "stream-to-array": "^2.3.0"
   },
   "devDependencies": {
+    "aws-sdk": "^2.648.0",
     "chai": "^4.2.0",
     "cors": "^2.8.5",
     "express": "^4.17.1",

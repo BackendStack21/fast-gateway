@@ -27,7 +27,7 @@ gateway({
       })
     ]
   }, {
-    // this route definition makes /public a default service if prefix is omitted
+    // this route definition makes http://localhost:3000 (/public) a default service if other routes prefixes are omitted
     prefix: '/*',
     pathRegex: '',
     target: 'http://localhost:3000'
