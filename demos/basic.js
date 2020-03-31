@@ -9,12 +9,15 @@ gateway({
 
   routes: [{
     prefix: '/public',
-    target: 'http://localhost:3000',
+    target: 'http://localhost:3000'
+    /*
+    // applicable in case Swagger Definitions would be supported on downstream service
     docs: {
       name: 'Public Service',
       endpoint: 'swagger.json',
       type: 'swagger'
     }
+    */
   }, {
     prefix: '/admin',
     target: 'http://localhost:3001',
