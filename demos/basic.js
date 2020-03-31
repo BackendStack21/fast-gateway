@@ -23,6 +23,11 @@ gateway({
         secret: 'shhhhhhared-secret'
       })
     ]
+  }, {
+    // this route definition makes /public a default service if prefix is omitted
+    prefix: '/*',
+    pathRegex: '',
+    target: 'http://localhost:3000'
   }]
 }).start(PORT).then(server => {
   console.log(`API Gateway listening on ${PORT} port!`)
