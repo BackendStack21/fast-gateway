@@ -1,6 +1,6 @@
 /* eslint-disable no-useless-call */
 
-const fastProxy = require('fast-proxy')
+const proxyFactory = require('./lib/proxy-factory')
 const restana = require('restana')
 const defaultProxyHandler = (req, res, url, proxy, proxyOpts) => proxy(req, res, url, proxyOpts)
 const DEFAULT_METHODS = require('restana/libs/methods').filter(method => method !== 'all')
@@ -56,21 +56,7 @@ const gateway = (opts) => {
     route.pathRegex = undefined === route.pathRegex ? opts.pathRegex : String(route.pathRegex)
 
     // instantiate route proxy
-    let proxy
-    if (proxyType === 'http') {
-      proxy = fastProxy({
-        base: opts.targetOverride || route.target,
-        http2: !!route.http2,
-        ...(opts.fastProxy)
-      }).proxy
-    } else if (proxyType === 'lambda') {
-      proxy = require('http-lambda-proxy')({
-        target: opts.targetOverride || route.target,
-        ...(route.lambdaProxy || {
-          region: 'eu-central-1'
-        })
-      })
-    }
+    const proxy = proxyFactory({ opts, route, proxyType })
 
     // route proxy handler function
     const proxyHandler = route.proxyHandler || defaultProxyHandler
