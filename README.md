@@ -42,7 +42,6 @@ service.start(3000)
   // If omitted, restana is used as default HTTP framework
   server, 
   // Optional restana library configuration (https://www.npmjs.com/package/restana#configuration)  
-  // 
   // Please note that if "server" is provided, this settings are ignored.
   restana: {},
   // Optional global middlewares in the format: (req, res, next) => next() 
@@ -51,23 +50,36 @@ service.start(3000)
   // Optional global value for routes "pathRegex". Default value: '/*'
   pathRegex: '/*',
   // Optional global requests timeout value (given in milliseconds). Default value: '0' (DISABLED)
+  // Ignored if proxyType = 'lambda'
   timeout: 0,
   // Optional "target" value that overrides the routes "target" config value. Feature intended for testing purposes.
   targetOverride: "https://yourdev.api-gateway.com",
 
   // HTTP proxy
   routes: [{
+    // Optional proxy type definition. Supported values: http, lambda
+    // Default value: http
+    proxyType: 'http'
     // Optional `fast-proxy` library configuration (https://www.npmjs.com/package/fast-proxy#options)
     // base parameter defined as the route target. Default value: {}
+    // This settings apply only when proxyType = 'http'
     fastProxy: {},
+    // Optional `http-lambda-proxy` library configuration (https://www.npmjs.com/package/http-lambda-proxy#options)
+    // The 'target' parameter is extracted from route.target, default region = 'eu-central-1'
+    // This settings apply only when proxyType = 'lambda'
+    lambdaProxy: {
+      region: 'eu-central-1'
+    },
     // Optional proxy handler function. Default value: (req, res, url, proxy, proxyOpts) => proxy(req, res, url, proxyOpts)
     proxyHandler: () => {},
     // Optional flag to indicate if target uses the HTTP2 protocol. Default value: false
+    // This setting apply only when proxyType = 'http'
     http2: false,
     // Optional path matching regex. Default value: '/*'
     // In order to disable the 'pathRegex' at all, you can use an empty string: ''
     pathRegex: '/*',
     // Optional service requests timeout value (given in milliseconds). Default value: '0' (DISABLED)
+    // This setting apply only when proxyType = 'http'
     timeout: 0,
     // route prefix
     prefix: '/public',
@@ -79,7 +91,8 @@ service.start(3000)
     },
     // Optional "prefix rewrite" before request is forwarded. Default value: ''
     prefixRewrite: '',
-    // Remote HTTP server URL to forward the request
+    // Remote HTTP server URL to forward the request. 
+    // If proxyType = 'lambda', the value is the name of the Lambda function, version, or alias.
     target: 'http://localhost:3000',
     // Optional HTTP methods to limit the requests proxy to certain verbs only
     // Supported HTTP methods: ['GET', 'DELETE', 'PATCH', 'POST', 'PUT', 'HEAD', 'OPTIONS', 'TRACE']
@@ -99,54 +112,14 @@ service.start(3000)
         // ...
       }
 
-      // other options allowed https://www.npmjs.com/package/fast-proxy#opts
+      // if proxyType= 'http', other options allowed https://www.npmjs.com/package/fast-proxy#opts
     }
   }]
 }
 ```
-### onResponse Hook default implementation
-For developers reference, next we describe how the default `onResponse` hook looks like: 
-```js
-const pump = require('pump')
-const toArray = require('stream-to-array')
-const TRANSFER_ENCODING_HEADER_NAME = 'transfer-encoding'
+### onResponse hooks default implementation
+For developers reference, default hooks implementation are located in `lib/default-hooks.js` file.
 
-const onResponse = async (req, res, stream) => {
-  const chunked = stream.headers[TRANSFER_ENCODING_HEADER_NAME]
-    ? stream.headers[TRANSFER_ENCODING_HEADER_NAME].endsWith('chunked')
-    : false
-
-  if (req.headers.connection === 'close' && chunked) {
-    try {
-      // remove transfer-encoding header
-      const transferEncoding = stream.headers[TRANSFER_ENCODING_HEADER_NAME].replace(/(,( )?)?chunked/, '')
-      if (transferEncoding) {
-        res.setHeader(TRANSFER_ENCODING_HEADER_NAME, transferEncoding)
-      } else {
-        res.removeHeader(TRANSFER_ENCODING_HEADER_NAME)
-      }
-
-      if (!stream.headers['content-length']) {
-        // pack all pieces into 1 buffer to calculate content length
-        const resBuffer = Buffer.concat(await toArray(stream))
-
-        // add content-length header and send the merged response buffer
-        res.setHeader('content-length', '' + Buffer.byteLength(resBuffer))
-        res.statusCode = stream.statusCode
-        res.end(resBuffer)
-
-        return
-      }
-    } catch (err) {
-      res.statusCode = 500
-      res.end(err.message)
-    }
-  }
-
-  res.statusCode = stream.statusCode
-  pump(stream, res)
-}
-```
 ## The "*GET /services.json*" endpoint
 Since version `1.3.5` the gateway exposes minimal documentation about registered services at: `GET /services.json`
 

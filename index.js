@@ -2,12 +2,10 @@
 
 const fastProxy = require('fast-proxy')
 const restana = require('restana')
-const pump = require('pump')
-const toArray = require('stream-to-array')
 const defaultProxyHandler = (req, res, url, proxy, proxyOpts) => proxy(req, res, url, proxyOpts)
 const DEFAULT_METHODS = require('restana/libs/methods').filter(method => method !== 'all')
 const send = require('@polka/send-type')
-const TRANSFER_ENCODING_HEADER_NAME = 'transfer-encoding'
+const PROXY_TYPES = ['http', 'lambda']
 
 const gateway = (opts) => {
   opts = Object.assign({
@@ -37,6 +35,15 @@ const gateway = (opts) => {
       route.prefixRewrite = ''
     }
 
+    // retrieve proxy type
+    const { proxyType = 'http' } = route
+    if (!PROXY_TYPES.includes(proxyType)) {
+      throw new Error('Unsupported proxy type, expecting one of ' + PROXY_TYPES.toString())
+    }
+
+    // retrieve default hooks for proxy
+    const { onRequestNoOp, onResponse } = require('./lib/default-hooks')[proxyType]
+
     // populating required NOOPS
     route.hooks = route.hooks || {}
     route.hooks.onRequest = route.hooks.onRequest || onRequestNoOp
@@ -49,11 +56,21 @@ const gateway = (opts) => {
     route.pathRegex = undefined === route.pathRegex ? opts.pathRegex : String(route.pathRegex)
 
     // instantiate route proxy
-    const { proxy } = fastProxy({
-      base: opts.targetOverride || route.target,
-      http2: !!route.http2,
-      ...(opts.fastProxy)
-    })
+    let proxy
+    if (proxyType === 'http') {
+      proxy = fastProxy({
+        base: opts.targetOverride || route.target,
+        http2: !!route.http2,
+        ...(opts.fastProxy)
+      }).proxy
+    } else if (proxyType === 'lambda') {
+      proxy = require('http-lambda-proxy')({
+        target: opts.targetOverride || route.target,
+        ...(route.lambdaProxy || {
+          region: 'eu-central-1'
+        })
+      })
+    }
 
     // route proxy handler function
     const proxyHandler = route.proxyHandler || defaultProxyHandler
@@ -100,43 +117,6 @@ const handler = (route, proxy, proxyHandler) => async (req, res, next) => {
   } catch (err) {
     return next(err)
   }
-}
-
-const onRequestNoOp = (req, res) => { }
-const onResponse = async (req, res, stream) => {
-  const chunked = stream.headers[TRANSFER_ENCODING_HEADER_NAME]
-    ? stream.headers[TRANSFER_ENCODING_HEADER_NAME].endsWith('chunked')
-    : false
-
-  if (req.headers.connection === 'close' && chunked) {
-    try {
-      // remove transfer-encoding header
-      const transferEncoding = stream.headers[TRANSFER_ENCODING_HEADER_NAME].replace(/(,( )?)?chunked/, '')
-      if (transferEncoding) {
-        res.setHeader(TRANSFER_ENCODING_HEADER_NAME, transferEncoding)
-      } else {
-        res.removeHeader(TRANSFER_ENCODING_HEADER_NAME)
-      }
-
-      if (!stream.headers['content-length']) {
-      // pack all pieces into 1 buffer to calculate content length
-        const resBuffer = Buffer.concat(await toArray(stream))
-
-        // add content-length header and send the merged response buffer
-        res.setHeader('content-length', '' + Buffer.byteLength(resBuffer))
-        res.statusCode = stream.statusCode
-        res.end(resBuffer)
-
-        return
-      }
-    } catch (err) {
-      res.statusCode = 500
-      res.end(err.message)
-    }
-  }
-
-  res.statusCode = stream.statusCode
-  pump(stream, res)
 }
 
 module.exports = gateway
