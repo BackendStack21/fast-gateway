@@ -44,6 +44,7 @@ npm i http-lambda-proxy
 const gateway = require('fast-gateway')
 const server = gateway({
   routes: [{
+    proxyType: 'lambda',
     prefix: '/service',
     target: 'my-lambda-serverless-api',
     lambdaProxy: {
