@@ -54,6 +54,8 @@ const server = gateway({
 
 server.start(8080)
 ```
+> You might also want to read: [Setting AWS Credentials in Node.js](https://docs.aws.amazon.com/sdk-for-javascript/v2/developer-guide/setting-credentials-node.html)
+
 #### Lambda Implementation
 ```js
 const serverless = require('serverless-http')
@@ -321,11 +323,6 @@ routes: [{
   }]
 }]
 ```
-
-## Want to contribute?
-This is your repo ;)  
-
-> Note: We aim to be 100% code coverage, please consider it on your pull requests.
 
 ## Related projects
 - middleware-if-unless (https://www.npmjs.com/package/middleware-if-unless)
