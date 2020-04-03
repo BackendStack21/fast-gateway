@@ -1,5 +1,6 @@
 # fast-gateway
 A super fast, framework agnostic Node.js API Gateway for the masses ❤️
+> Since v2.3.0, [AWS Lambda](https://www.youtube.com/watch?v=EBSdyoO3goc) proxying integration is supported via [`http-lambda-proxy`](https://www.npmjs.com/package/http-lambda-proxy) 🔥
 
 ## Medium articles:
 - https://medium.com/@kyberneees/node-js-api-gateway-a-developer-perspective-8defe575ed21
