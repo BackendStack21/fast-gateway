@@ -77,6 +77,17 @@ module.exports = async () => {
       prefixRewrite: '/endpoint-proxy-methods-put',
       target: 'http://localhost:3000',
       methods: ['PUT']
+    }, {
+      prefix: '/lambda',
+      proxyType: 'lambda',
+      target: 'a-lambda-function-name',
+      hooks: {
+        async onRequest (req, res) {
+          res.end('Go Serverless!')
+
+          return true
+        }
+      }
     }]
   }
 }
