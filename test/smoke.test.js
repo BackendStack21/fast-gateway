@@ -1,7 +1,7 @@
 /* global describe, it */
 const expect = require('chai').expect
 const request = require('supertest')
-const fastGateway = require('./../index')
+const fastGateway = require('../index')
 const config = require('./config')
 
 let remote, gateway
@@ -300,6 +300,14 @@ describe('API Gateway', () => {
       .set('Connection', 'keep-alive')
       .then((res) => {
         expect(res.text).to.equal('user1')
+      })
+  })
+
+  it('GET /lambda/hi', async () => {
+    await request(gateway)
+      .get('/lambda/hi')
+      .then((res) => {
+        expect(res.text).to.equal('Go Serverless!')
       })
   })
 

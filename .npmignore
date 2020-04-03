@@ -1,0 +1,7 @@
+.env
+test/
+demos/
+.nyc_output
+.github/
+.travis.yml
+.benchmark/

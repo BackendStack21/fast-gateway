@@ -40,6 +40,7 @@
     "express-jwt": "^5.3.1",
     "express-rate-limit": "^5.1.1",
     "helmet": "^3.21.3",
+    "http-lambda-proxy": "^1.0.1",
     "mocha": "^7.1.0",
     "nyc": "^15.0.0",
     "opossum": "^4.2.4",
