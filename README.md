@@ -12,7 +12,10 @@ npm i fast-gateway
 ```
 
 ## Usage
-### Gateway
+Next we describe two examples proxying HTTP and Lambda downstream services.  
+> For simplicity of reading, both examples are separated, however a single gateway configuration supports all routes configurations.
+### HTTP Proxying
+#### Gateway
 ```js
 const gateway = require('fast-gateway')
 const server = gateway({
@@ -24,12 +27,54 @@ const server = gateway({
 
 server.start(8080)
 ```
-### Remote Service
+#### Remote Service
 ```js
 const service = require('restana')()
 service.get('/get', (req, res) => res.send('Hello World!'))
 
 service.start(3000)
+```
+
+### Lambda Proxying
+#### Gateway
+```bash
+npm i http-lambda-proxy
+```
+```js
+const gateway = require('fast-gateway')
+const server = gateway({
+  routes: [{
+    prefix: '/service',
+    target: 'my-lambda-serverless-api',
+    lambdaProxy: {
+      region: 'eu-central-1'
+    }
+  }]
+})
+
+server.start(8080)
+```
+#### Lambda Implementation
+```js
+const serverless = require('serverless-http')
+const json = require('serverless-json-parser')
+const query = require('connect-query')
+
+const service = require('restana')()
+service.use(query())
+service.use(json())
+
+// routes
+service.get('/get', (req, res) => {
+  res.send({ msg: 'Go Serverless!' })
+})
+service.post('/post', (req, res) => {
+  res.send(req.body)
+})
+
+// export handler
+module.exports.handler = serverless(service)
+
 ```
 
 ## Configuration options explained
@@ -285,6 +330,7 @@ This is your repo ;)
 ## Related projects
 - middleware-if-unless (https://www.npmjs.com/package/middleware-if-unless)
 - fast-proxy (https://www.npmjs.com/package/fast-proxy)
+- http-lambda-proxy (https://www.npmjs.com/package/http-lambda-proxy)
 - restana (https://www.npmjs.com/package/restana)
 
 ## Benchmarks
