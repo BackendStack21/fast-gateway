@@ -1,3 +1,5 @@
+'use strict'
+
 const gateway = require('./../index')
 
 gateway({

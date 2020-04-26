@@ -1,3 +1,5 @@
+'use strict'
+
 const gateway = require('../index')
 const rateLimit = require('express-rate-limit')
 const requestIp = require('request-ip')

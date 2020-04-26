@@ -1,3 +1,4 @@
+'use strict'
 
 const service = require('restana')({
   disableResponseEvent: true

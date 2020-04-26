@@ -1,3 +1,5 @@
+'use strict'
+
 const toArray = require('stream-to-array')
 const gateway = require('../index')
 

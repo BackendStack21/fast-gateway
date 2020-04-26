@@ -1,3 +1,5 @@
+'use strict'
+
 const gateway = require('../index')
 const onEnd = require('on-http-end')
 const CircuitBreaker = require('opossum')

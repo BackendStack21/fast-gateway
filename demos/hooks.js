@@ -1,3 +1,5 @@
+'use strict'
+
 const gateway = require('./../index')
 const PORT = process.env.PORT || 8080
 

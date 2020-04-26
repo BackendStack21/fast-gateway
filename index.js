@@ -1,3 +1,5 @@
+'use strict'
+
 /* eslint-disable no-useless-call */
 
 const proxyFactory = require('./lib/proxy-factory')

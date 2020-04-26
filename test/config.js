@@ -1,3 +1,5 @@
+'use strict'
+
 const pump = require('pump')
 
 module.exports = async () => {
