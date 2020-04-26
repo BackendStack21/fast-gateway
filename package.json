@@ -3,6 +3,7 @@
   "version": "2.3.7",
   "description": "A Node.js API Gateway for the masses!",
   "main": "index.js",
+  "types": "index.d.ts",
   "scripts": {
     "test": "nyc mocha test/*.test.js",
     "format": "npx standard --fix",
