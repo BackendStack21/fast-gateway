@@ -32,6 +32,12 @@
     "restana": "^4.3.3",
     "stream-to-array": "^2.3.0"
   },
+  "files": [
+    "lib/",
+    "index.js",
+    "README.md",
+    "LICENSE"
+  ],
   "devDependencies": {
     "aws-sdk": "^2.663.0",
     "chai": "^4.2.0",
