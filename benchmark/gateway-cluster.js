@@ -1,9 +1,10 @@
 'use strict'
 
 const cluster = require('cluster')
+const os = require('os')
 
 if (cluster.isMaster) {
-  const cpuCount = 4
+  const cpuCount = os.cpus().length
   for (let i = 0; i < cpuCount; i++) {
     cluster.fork()
   }
