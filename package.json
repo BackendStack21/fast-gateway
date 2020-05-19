@@ -1,6 +1,6 @@
 {
   "name": "fast-gateway",
-  "version": "2.3.12",
+  "version": "2.3.13",
   "description": "A Node.js API Gateway for the masses!",
   "main": "index.js",
   "types": "index.d.ts",
@@ -30,7 +30,7 @@
     "@polka/send-type": "^0.5.2",
     "fast-proxy": "^1.6.2",
     "http-cache-middleware": "^1.3.5",
-    "restana": "^4.3.4",
+    "restana": "^4.3.5",
     "stream-to-array": "^2.3.0"
   },
   "files": [
@@ -41,7 +41,7 @@
     "LICENSE"
   ],
   "devDependencies": {
-    "aws-sdk": "^2.669.0",
+    "aws-sdk": "^2.679.0",
     "chai": "^4.2.0",
     "cors": "^2.8.5",
     "express": "^4.17.1",
@@ -54,7 +54,7 @@
     "opossum": "^4.2.4",
     "request-ip": "^2.1.3",
     "response-time": "^2.3.2",
-    "standard": "^14.3.3",
+    "standard": "^14.3.4",
     "supertest": "^4.0.2"
   }
 }
