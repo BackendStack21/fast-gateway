@@ -1,6 +1,5 @@
 # fast-gateway
-[![Build Status](https://travis-ci.org/jkyberneees/ana.svg?branch=master)](https://travis-ci.org/jkyberneees/fast-gateway)
-[![NPM version](https://img.shields.io/npm/v/restana.svg?style=flat)](https://www.npmjs.com/package/fast-gateway)  
+[![NPM version](https://img.shields.io/npm/v/fast-gateway.svg?style=flat)](https://www.npmjs.com/package/fast-gateway)  
 
 A super fast, framework agnostic Node.js API Gateway for the masses ❤️
 > Since v2.3.0, [AWS Lambda](https://www.youtube.com/watch?v=EBSdyoO3goc) proxying integration is supported via [`http-lambda-proxy`](https://www.npmjs.com/package/http-lambda-proxy) 🔥
