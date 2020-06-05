@@ -37,6 +37,13 @@ declare namespace fastgateway {
     onRequest?: Function,
     rewriteHeaders?: Function,
     onResponse?: Function,
+    rewriteRequestHeaders?: Function,
+    request?: {
+      timeout?: number,
+      [x: string]: any 
+    }
+    queryString?: string,
+    [x: string]: any 
   }
   interface Options<P extends restana.Protocol> {
     server?: restana.Server<P>;
