@@ -45,6 +45,7 @@ declare namespace fastgateway {
     queryString?: string,
     [x: string]: any 
   }
+  
   interface Options<P extends restana.Protocol> {
     server?: restana.Server<P>;
     restana?: {};
