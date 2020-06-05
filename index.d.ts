@@ -36,7 +36,7 @@ declare namespace fastgateway {
   interface Hooks {
     onRequest?: Function,
     rewriteHeaders?: Function,
-    onResponse: Function,
+    onResponse?: Function,
   }
   interface Options<P extends restana.Protocol> {
     server?: restana.Server<P>;
