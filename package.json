@@ -41,7 +41,7 @@
     "LICENSE"
   ],
   "devDependencies": {
-    "aws-sdk": "^2.691.0",
+    "aws-sdk": "^2.703.0",
     "chai": "^4.2.0",
     "cors": "^2.8.5",
     "express": "^4.17.1",
@@ -50,7 +50,7 @@
     "fg-multiple-hooks": "^1.0.1",
     "helmet": "^3.22.0",
     "http-lambda-proxy": "^1.0.1",
-    "mocha": "^7.2.0",
+    "mocha": "^8.0.1",
     "nyc": "^15.1.0",
     "opossum": "^4.2.4",
     "request-ip": "^2.1.3",
