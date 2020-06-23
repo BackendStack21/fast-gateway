@@ -16,11 +16,6 @@ declare namespace fastgateway {
     type: string;
   }
 
-  interface Opts {
-    server?: Function,
-    middlewares?: Function[],
-    routes?: Route[], 
-  }
   interface Route {
     proxyType?: Type;
     fastProxy?: {};
