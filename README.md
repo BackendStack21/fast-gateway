@@ -155,6 +155,9 @@ module.exports.handler = serverless(service)
       //   // we can optionally reply from here if required
       //   res.end('Hello World!')
       //
+      //   // we can optionally update the request query params from here if required
+      //   req.query.category = 'js'
+      //
       //   return true // truthy value returned will abort the request forwarding
       },
       onResponse (req, res, stream) {  

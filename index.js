@@ -97,7 +97,8 @@ const handler = (route, proxy, proxyHandler) => async (req, res, next) => {
       const proxyOpts = Object.assign({
         request: {
           timeout: req.timeout || route.timeout
-        }
+        },
+        queryString: req.query
       }, route.hooks)
 
       proxyHandler(req, res, req.url, proxy, proxyOpts)

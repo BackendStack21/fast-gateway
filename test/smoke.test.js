@@ -19,7 +19,7 @@ describe('API Gateway', () => {
       name: 'endpoint-proxy'
     }))
     remote.get('/info', (req, res) => res.send({
-      name: 'fastify-gateway'
+      name: 'fast-gateway'
     }))
     remote.get('/chunked', (req, res) => {
       res.write('user')
@@ -55,6 +55,9 @@ describe('API Gateway', () => {
     remote.post('/endpoint-proxy-methods', (req, res) => res.send({
       name: 'endpoint-proxy-methods'
     }))
+    remote.get('/qs', (req, res) => {
+      res.send(req.query)
+    })
 
     await remote.start(3000)
   })
@@ -178,7 +181,7 @@ describe('API Gateway', () => {
       .get('/users/info')
       .expect(200)
       .then((response) => {
-        expect(response.body.name).to.equal('fastify-gateway')
+        expect(response.body.name).to.equal('fast-gateway')
       })
   })
 
@@ -302,6 +305,24 @@ describe('API Gateway', () => {
       .set('Connection', 'keep-alive')
       .then((res) => {
         expect(res.text).to.equal('user1')
+      })
+  })
+
+  it('GET /qs - 200', async () => {
+    await request(gateway)
+      .get('/qs')
+      .expect(200)
+      .then((response) => {
+        expect(response.body.name).to.equal('fast-gateway')
+      })
+  })
+
+  it('GET /qs2 - 200', async () => {
+    await request(gateway)
+      .get('/qs2?name=fast-gateway')
+      .expect(200)
+      .then((response) => {
+        expect(response.body.name).to.equal('qs-overwrite')
       })
   })
 

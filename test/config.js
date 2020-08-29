@@ -75,6 +75,30 @@ module.exports = async () => {
     },
     {
       pathRegex: '',
+      prefix: '/qs',
+      prefixRewrite: '/qs',
+      target: 'http://localhost:3000',
+      methods: ['GET'],
+      hooks: {
+        onRequest: (req) => {
+          req.query.name = 'fast-gateway'
+        }
+      }
+    },
+    {
+      pathRegex: '',
+      prefix: '/qs2',
+      prefixRewrite: '/qs',
+      target: 'http://localhost:3000',
+      methods: ['GET'],
+      hooks: {
+        queryString: {
+          name: 'qs-overwrite'
+        }
+      }
+    },
+    {
+      pathRegex: '',
       prefix: '/endpoint-proxy-methods-put',
       prefixRewrite: '/endpoint-proxy-methods-put',
       target: 'http://localhost:3000',
