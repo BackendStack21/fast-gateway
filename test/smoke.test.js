@@ -58,9 +58,6 @@ describe('API Gateway', () => {
     remote.get('/qs', (req, res) => {
       res.send(req.query)
     })
-    remote.get('/qs2', (req, res) => {
-      res.send(req.query)
-    })
 
     await remote.start(3000)
   })
