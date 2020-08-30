@@ -92,6 +92,9 @@ module.exports = async () => {
       target: 'http://localhost:3000',
       methods: ['GET'],
       hooks: {
+        onRequest: (req) => {
+          req.query.name = 'fast-gateway'
+        },
         queryString: {
           name: 'qs-overwrite'
         }

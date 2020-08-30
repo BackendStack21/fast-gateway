@@ -308,16 +308,17 @@ describe('API Gateway', () => {
       })
   })
 
-  it('GET /qs - 200', async () => {
+  it('(Should overwrite query string using req.query) GET /qs - 200', async () => {
     await request(gateway)
-      .get('/qs')
+      .get('/qs?name=nodejs&category=js')
       .expect(200)
       .then((response) => {
         expect(response.body.name).to.equal('fast-gateway')
+        expect(response.body.category).to.equal('js')
       })
   })
 
-  it('GET /qs2 - 200', async () => {
+  it('(Should overwrite query string using queryString option) GET /qs2 - 200', async () => {
     await request(gateway)
       .get('/qs2?name=fast-gateway')
       .expect(200)
