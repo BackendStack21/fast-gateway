@@ -30,7 +30,7 @@
     "@polka/send-type": "^0.5.2",
     "fast-proxy": "^1.7.0",
     "http-cache-middleware": "^1.3.5",
-    "restana": "^4.7.3",
+    "restana": "^4.7.4",
     "stream-to-array": "^2.3.0"
   },
   "files": [
@@ -41,21 +41,20 @@
     "LICENSE"
   ],
   "devDependencies": {
-    "aws-sdk": "^2.742.0",
+    "aws-sdk": "^2.758.0",
     "chai": "^4.2.0",
     "cors": "^2.8.5",
     "express": "^4.17.1",
-    "express-jwt": "^5.3.3",
+    "express-jwt": "^6.0.0",
     "express-rate-limit": "^5.1.3",
-    "fg-multiple-hooks": "1.2.0",
-    "helmet": "^3.23.3",
+    "fg-multiple-hooks": "^1.2.0",
+    "helmet": "^4.1.1",
     "http-lambda-proxy": "^1.0.1",
     "mocha": "^8.1.3",
     "nyc": "^15.1.0",
-    "opossum": "^4.2.4",
+    "opossum": "^5.0.1",
     "request-ip": "^2.1.3",
     "response-time": "^2.3.2",
-    "standard": "^14.3.4",
     "supertest": "^4.0.2"
   }
 }
