@@ -47,7 +47,7 @@ declare namespace fastgateway {
   }
   
   interface Options<P extends restana.Protocol> {
-    server?: restana.Server<P>;
+    server?: Object | restana.Service<P> | Express.Application;
     restana?: {};
     middlewares?: Function[];
     pathRegex?: string;
