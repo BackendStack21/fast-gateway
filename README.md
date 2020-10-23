@@ -240,6 +240,56 @@ gateway({
 ```
 > In this example we have used the [express-rate-limit](https://www.npmjs.com/package/express-rate-limit) module.
 
+## Hostnames support
+We can also implement hostnames support with fast-gateway, basically we translate hostnames to prefixes: 
+```js
+...
+
+// binding hostnames to prefixes
+const hostnames2prefix = [{
+  prefix: '/api',
+  hostname: 'api.company.tld'
+}]
+// instantiate hostnames hook, this will prefix request urls according to data in hostnames2prefix
+const hostnamesHook = require('fast-gateway/lib/hostnames-hook')(hostnames2prefix)
+
+// separately instantiate and configure restana application
+const app = restana()
+const server = http.createServer((req, res) => {
+  hostnamesHook(req, res, () => {
+    return app(req, res)
+  })
+})
+
+// gateway configuration
+gateway({
+  server: app, // injecting existing restana application
+  routes: [{
+    prefix: '/api',
+    target: 'http://localhost:3000'
+  }]
+})
+
+...
+```
+> Afterwards:  
+> `curl --header "Host: api.company.tld:8080" http://127.0.0.1:8080/api-service-endpoint`
+
+You can optionally `npm install micromatch` and benefit from patterns support:
+```js
+const hostnames2prefix = [{
+  prefix: '/admin',
+  hostname: '*.admin.company.tld'
+}, {
+  prefix: '/services',
+  hostname: [
+    'services.company.tld', 
+    '*.services.company.tld'
+  ]
+}]
+```
+For more details, please checkout the `basic-hostnames.js` demo.
+
 ## Gateway level caching
 Caching support is provided by the `http-cache-middleware` module. https://www.npmjs.com/package/http-cache-middleware
 

@@ -7,8 +7,8 @@ const restana = require('restana')
 
 // binding hostnames to prefixes
 const hostnames2prefix = [{
-  prefix: '/public',
-  hostname: 'nodejs.org'
+  prefix: '/api',
+  hostname: 'api.company.tld'
 }]
 // instantiate hostnames hook, this will prefix request urls according to data in hostnames2prefix
 const hostnamesHook = require('./../lib/hostnames-hook')(hostnames2prefix)
@@ -28,7 +28,7 @@ gateway({
   ],
 
   routes: [{
-    prefix: '/public',
+    prefix: '/api',
     target: 'http://localhost:3000'
   }]
 })
