@@ -5,12 +5,15 @@ const PORT = process.env.PORT || 8080
 const http = require('http')
 const restana = require('restana')
 
+// binding hostnames to prefixes
 const hostnames2prefix = [{
   prefix: '/public',
   hostname: 'nodejs.org'
 }]
+// instantiate hostnames hook, this will prefix request urls according to data in hostnames2prefix
 const hostnamesHook = require('./../lib/hostnames-hook')(hostnames2prefix)
 
+// separately instantiate and configure restana application
 const app = restana()
 const server = http.createServer((req, res) => {
   hostnamesHook(req, res, () => {
@@ -18,8 +21,9 @@ const server = http.createServer((req, res) => {
   })
 })
 
+// gateway configuration
 gateway({
-  server: app,
+  server: app, // injecting existing restana application
   middlewares: [
   ],
 
