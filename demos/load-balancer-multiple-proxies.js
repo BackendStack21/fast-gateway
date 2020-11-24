@@ -3,6 +3,7 @@
 const gateway = require('../index')
 const { P2cBalancer } = require('load-balancers')
 const lambdaProxy = require('http-lambda-proxy')
+const { onRequestNoOp, onResponse } = require('./../lib/default-hooks').lambda
 
 // @TODO: update the list of target origins or proxy instances
 const targets = [
@@ -21,6 +22,8 @@ gateway({
       if (typeof target === 'string') {
         proxyOpts.base = target
       } else {
+        proxyOpts.onResponse = onResponse
+        proxyOpts.onRequest = onRequestNoOp
         proxy = target
       }
 
