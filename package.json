@@ -28,7 +28,7 @@
   "homepage": "https://github.com/jkyberneees/fast-gateway#readme",
   "dependencies": {
     "@polka/send-type": "^0.5.2",
-    "fast-proxy": "^1.7.0",
+    "fast-proxy": "^1.8.0",
     "http-cache-middleware": "^1.3.6",
     "restana": "^4.8.0",
     "stream-to-array": "^2.3.0"
