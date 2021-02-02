@@ -91,7 +91,9 @@ const gateway = (opts) => {
 
 const handler = (route, proxy, proxyHandler) => async (req, res, next) => {
   try {
-    req.url = req.url.replace(route.prefix, route.prefixRewrite)
+    req.url = route.urlRewrite
+      ? route.urlRewrite(req)
+      : req.url.replace(route.prefix, route.prefixRewrite)
     const shouldAbortProxy = await route.hooks.onRequest(req, res)
     if (!shouldAbortProxy) {
       const proxyOpts = Object.assign({
