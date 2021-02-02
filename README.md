@@ -141,6 +141,8 @@ module.exports.handler = serverless(service)
     },
     // Optional "prefix rewrite" before request is forwarded. Default value: ''
     prefixRewrite: '',
+    // Optional "url rewrite" hook. If defined, the prefixRewrite setting is ignored. 
+    urlRewrite: (req) => req.url,
     // Remote HTTP server URL to forward the request. 
     // If proxyType = 'lambda', the value is the name of the Lambda function, version, or alias.
     target: 'http://localhost:3000',
