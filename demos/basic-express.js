@@ -25,7 +25,8 @@ gateway({
     target: 'http://localhost:3001',
     middlewares: [
       require('express-jwt')({
-        secret: 'shhhhhhared-secret'
+        secret: 'shhhhhhared-secret',
+        algorithms: ['HS256']
       })
     ]
   }]
