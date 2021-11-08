@@ -406,6 +406,6 @@ You can support the maintenance of this project:
 
 ## Breaking Changes
 ### v3.x
-- The `fast-proxy-lite` module is used by default to support `http` proxy type 🔥
+- The `fast-proxy-lite` module is used by default to support `http` proxy type 🔥. This means, no `undici` or `http2` are supported by default.
 - The old `fast-proxy` module is available under the `http-legacy` proxy type, but the module is not installed by default.
 - Proxy configuration is now generalized under the `proxyConfig` property.
