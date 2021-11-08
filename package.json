@@ -1,6 +1,6 @@
 {
   "name": "fast-gateway",
-  "version": "2.9.4",
+  "version": "3.0.0",
   "description": "A Node.js API Gateway for the masses!",
   "main": "index.js",
   "types": "index.d.ts",
@@ -28,9 +28,9 @@
   "homepage": "https://github.com/jkyberneees/fast-gateway#readme",
   "dependencies": {
     "@polka/send-type": "^0.5.2",
-    "fast-proxy": "^2.1.0",
+    "fast-proxy-lite": "^1.0.1",
     "http-cache-middleware": "^1.3.8",
-    "restana": "^4.9.1",
+    "restana": "^4.9.2",
     "stream-to-array": "^2.3.0"
   },
   "files": [
@@ -42,12 +42,12 @@
   ],
   "devDependencies": {
     "@types/express": "^4.17.11",
-    "aws-sdk": "^2.1018.0",
+    "aws-sdk": "^2.1023.0",
     "chai": "^4.3.4",
     "cors": "^2.8.5",
     "express": "^4.17.1",
     "express-jwt": "^6.1.0",
-    "express-rate-limit": "^5.5.0",
+    "express-rate-limit": "^5.5.1",
     "fg-multiple-hooks": "^1.3.0",
     "helmet": "^4.6.0",
     "http-lambda-proxy": "^1.1.4",
