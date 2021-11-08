@@ -7,7 +7,6 @@ A super fast, framework agnostic Node.js API Gateway for the masses ❤️
 ## Medium articles:
 - https://itnext.io/a-js-api-gateway-for-the-masses-a12fdb9e961c
 
-
 ## Install
 ```js
 npm i fast-gateway
@@ -46,10 +45,10 @@ npm i http-lambda-proxy
 const gateway = require('fast-gateway')
 const server = gateway({
   routes: [{
-    proxyType: 'lambda',
     prefix: '/service',
     target: 'my-lambda-serverless-api',
-    lambdaProxy: {
+    proxyType: 'lambda',
+    proxyConfig: {
       region: 'eu-central-1'
     }
   }]
@@ -104,27 +103,27 @@ module.exports.handler = serverless(service)
   timeout: 0,
   // Optional "target" value that overrides the routes "target" config value. Feature intended for testing purposes.
   targetOverride: "https://yourdev.api-gateway.com",
+  // Optional "Proxy Factory" implementation, allows the integration of custom proxying strategies.
+  // Default value: require('fast-proxy-lite/lib/proxy-factory')
+  proxyFactory: ({ proxyType, opts, route }) => {...}
 
   // HTTP proxy
   routes: [{
-    // Optional proxy type definition. Supported values: http, lambda
+    // Optional proxy type definition. Supported values: http, http-legacy, lambda
+    // Modules:
+    // - http: fast-proxy-lite
+    // - http-legacy: fast-proxy
+    // - lambda: http-lambda-proxy
     // Default value: http
     proxyType: 'http'
-    // Optional `fast-proxy` library configuration (https://www.npmjs.com/package/fast-proxy#options)
-    // base parameter defined as the route target. Default value: {}
-    // This settings apply only when proxyType = 'http'
-    fastProxy: {},
-    // Optional `http-lambda-proxy` library configuration (https://www.npmjs.com/package/http-lambda-proxy#options)
-    // The 'target' parameter is extracted from route.target, default region = 'eu-central-1'
-    // This settings apply only when proxyType = 'lambda'
-    lambdaProxy: {
-      region: 'eu-central-1'
-    },
+    // Optional proxy library configuration: 
+    // - fast-proxy-lite: https://www.npmjs.com/package/fast-proxy-lite#options
+    // - fast-proxy: https://www.npmjs.com/package/fast-proxy#options
+    // - http-lambda-proxy: https://www.npmjs.com/package/http-lambda-proxy#options
+    // Default value: {}
+    proxyConfig: {},
     // Optional proxy handler function. Default value: (req, res, url, proxy, proxyOpts) => proxy(req, res, url, proxyOpts)
     proxyHandler: () => {},
-    // Optional flag to indicate if target uses the HTTP2 protocol. Default value: false
-    // This setting apply only when proxyType = 'http'
-    http2: false,
     // Optional path matching regex. Default value: '/*'
     // In order to disable the 'pathRegex' at all, you can use an empty string: ''
     pathRegex: '/*',
@@ -167,7 +166,7 @@ module.exports.handler = serverless(service)
         // ...
       }
 
-      // if proxyType= 'http', other options allowed https://www.npmjs.com/package/fast-proxy#opts
+      // if proxyType= 'http', other options allowed https://www.npmjs.com/package/fast-proxy-lite#opts
     }
   }]
 }
@@ -384,7 +383,7 @@ routes: [{
 
 ## Related projects
 - middleware-if-unless (https://www.npmjs.com/package/middleware-if-unless)
-- fast-proxy (https://www.npmjs.com/package/fast-proxy)
+- fast-proxy-lite (https://www.npmjs.com/package/fast-proxy-lite)
 - http-lambda-proxy (https://www.npmjs.com/package/http-lambda-proxy)
 - restana (https://www.npmjs.com/package/restana)
 
@@ -403,3 +402,10 @@ Benchmark scripts can be found in benchmark folder.
 You can support the maintenance of this project: 
 - PayPal: https://www.paypal.me/kyberneees
 - [TRON](https://www.binance.com/en/buy-TRON) Wallet: `TJ5Bbf9v4kpptnRsePXYDvnYcYrS5Tyxus`
+
+
+## Breaking Changes
+### v3.x
+- The `fast-proxy-lite` module is used by default to support `http` proxy type 🔥. This means, no `undici` or `http2` are supported by default.
+- The old `fast-proxy` module is available under the `http-legacy` proxy type, but the module is not installed by default.
+- Proxy configuration is now generalized under the `proxyConfig` property.

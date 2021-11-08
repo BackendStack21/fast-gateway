@@ -5,21 +5,21 @@ declare namespace fastgateway {
 
   type Method = 'GET' | 'DELETE' | 'PATCH' | 'POST' | 'PUT' | 'HEAD' | 'OPTIONS' | 'TRACE';
 
-  interface LambdaProxy {
-    region?: string;
-    target?: string;
-  }
-
   interface Docs {
     name: string;
     endpoint: string;
     type: string;
   }
 
+  interface ProxyFactoryOpts {
+    proxyType: string;
+    opts: {};
+    route: Route;
+  }
+
   interface Route {
     proxyType?: Type;
-    fastProxy?: {};
-    lambdaProxy?: LambdaProxy;
+    proxyConfig?: {};
     proxyHandler?: Function;
     http2?: boolean;
     pathRegex?: string;
@@ -48,6 +48,7 @@ declare namespace fastgateway {
   
   interface Options<P extends restana.Protocol> {
     server?: Object | restana.Service<P> | Express.Application;
+    proxyFactory?: (opts: ProxyFactoryOpts) => Function;
     restana?: {};
     middlewares?: Function[];
     pathRegex?: string;

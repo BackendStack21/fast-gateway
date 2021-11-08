@@ -2,7 +2,7 @@
 
 /* eslint-disable no-useless-call */
 
-const proxyFactory = require('./lib/proxy-factory')
+const defaultProxyFactory = require('./lib/proxy-factory')
 const restana = require('restana')
 const defaultProxyHandler = (req, res, url, proxy, proxyOpts) => proxy(req, res, url, proxyOpts)
 const DEFAULT_METHODS = require('restana/libs/methods').filter(method => method !== 'all')
@@ -10,6 +10,8 @@ const send = require('@polka/send-type')
 const PROXY_TYPES = ['http', 'lambda']
 
 const gateway = (opts) => {
+  const proxyFactory = opts.proxyFactory || defaultProxyFactory
+
   opts = Object.assign({
     middlewares: [],
     pathRegex: '/*'
