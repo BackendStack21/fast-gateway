@@ -1,5 +1,6 @@
 # fast-gateway
-[![NPM version](https://img.shields.io/npm/v/fast-gateway.svg?style=flat)](https://www.npmjs.com/package/fast-gateway)  
+[![NPM version](https://img.shields.io/npm/v/fast-gateway.svg?style=flat)](https://www.npmjs.com/package/fast-gateway) 
+[![tests](https://github.com/BackendStack21/fast-gateway/actions/workflows/tests.yaml/badge.svg)](https://github.com/BackendStack21/fast-gateway/actions/workflows/tests.yaml)
 
 A super fast, framework agnostic Node.js API Gateway for the masses ❤️
 > Since v2.3.0, [AWS Lambda](https://www.youtube.com/watch?v=EBSdyoO3goc) proxying integration is supported via [`http-lambda-proxy`](https://www.npmjs.com/package/http-lambda-proxy) 🔥
