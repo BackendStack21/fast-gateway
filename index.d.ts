@@ -21,7 +21,6 @@ declare namespace fastgateway {
     proxyType?: Type;
     proxyConfig?: {};
     proxyHandler?: Function;
-    http2?: boolean;
     pathRegex?: string;
     timeout?: number;
     prefix: string;
