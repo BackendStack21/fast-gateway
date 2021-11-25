@@ -21,7 +21,6 @@ declare namespace fastgateway {
     proxyType?: Type;
     proxyConfig?: {};
     proxyHandler?: Function;
-    http2?: boolean;
     pathRegex?: string;
     timeout?: number;
     prefix: string;
@@ -31,6 +30,16 @@ declare namespace fastgateway {
     methods?: Method[];
     middlewares?: Function[];
     hooks?: Hooks;
+  }
+
+  interface WebSocketRoute {
+    proxyType: 'websocket';
+    proxyConfig?: {};
+    proxyHandler?: Function;
+    prefix: string;
+    prefixRewrite?: string;
+    target: string;
+    middlewares?: Function[];
   }
 
   interface Hooks {
@@ -54,7 +63,7 @@ declare namespace fastgateway {
     pathRegex?: string;
     timeout?: number;
     targetOverride?: string;
-    routes: Route[];
+    routes: Route[] | WebSocketRoute[];
   }
 }
 
