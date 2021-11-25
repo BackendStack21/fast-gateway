@@ -29,6 +29,7 @@ declare namespace fastgateway {
     target: string;
     methods?: Method[];
     middlewares?: Function[];
+    urlRewrite?: Function;
     hooks?: Hooks;
   }
 
