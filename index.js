@@ -8,6 +8,7 @@ const defaultProxyHandler = (req, res, url, proxy, proxyOpts) => proxy(req, res,
 const DEFAULT_METHODS = require('restana/libs/methods').filter(method => method !== 'all')
 const send = require('@polka/send-type')
 const PROXY_TYPES = ['http', 'lambda']
+const wsProxy = require('./lib/ws-proxy')
 
 const gateway = (opts) => {
   const proxyFactory = opts.proxyFactory || defaultProxyFactory
@@ -17,11 +18,11 @@ const gateway = (opts) => {
     pathRegex: '/*'
   }, opts)
 
-  const server = opts.server || restana(opts.restana)
+  const router = opts.server || restana(opts.restana)
 
   // registering global middlewares
   opts.middlewares.forEach(middleware => {
-    server.use(middleware)
+    router.use(middleware)
   })
 
   // registering services.json
@@ -29,12 +30,19 @@ const gateway = (opts) => {
     prefix: route.prefix,
     docs: route.docs
   }))
-  server.get('/services.json', (req, res) => {
+  router.get('/services.json', (req, res) => {
     send(res, 200, services)
   })
 
-  // processing routes
-  opts.routes.forEach(route => {
+  // processing websocket routes
+  const wsRoutes = opts.routes.filter(route => route.proxyType === 'websocket')
+  wsProxy({
+    routes: wsRoutes,
+    server: router.getServer()
+  })
+
+  // processing non-websocket routes
+  opts.routes.filter(route => route.proxyType !== 'websocket').forEach(route => {
     if (undefined === route.prefixRewrite) {
       route.prefixRewrite = ''
     }
@@ -82,13 +90,13 @@ const gateway = (opts) => {
 
     methods.forEach(method => {
       method = method.toLowerCase()
-      if (server[method]) {
-        server[method].apply(server, args)
+      if (router[method]) {
+        router[method].apply(router, args)
       }
     })
   })
 
-  return server
+  return router
 }
 
 const handler = (route, proxy, proxyHandler) => async (req, res, next) => {

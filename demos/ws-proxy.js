@@ -1,14 +1,21 @@
-const http = require('http')
-const WebSocket = require('faye-websocket')
+'use strict'
 
-const server = http.createServer()
+const gateway = require('./../index')
+const PORT = process.env.PORT || 8080
 
-server.on('upgrade', (request, socket, body) => {
-  const client = new WebSocket(request, socket, body)
-  const target = new WebSocket.Client('ws://ws.ifelse.io')
+gateway({
+  routes: [{
+    // ... other HTTP or WebSocket routes
+  }, {
+    proxyType: 'websocket',
+    prefix: '/echo',
+    target: 'ws://ws.ifelse.io',
+    hooks: {
+      onOpen: (ws, searchParams) => {
 
-  client.pipe(target)
-  target.pipe(client)
+      }
+    }
+  }]
+}).start(PORT).then(server => {
+  console.log(`API Gateway listening on ${PORT} port!`)
 })
-
-server.listen(3000)
