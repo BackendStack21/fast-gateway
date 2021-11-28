@@ -8,7 +8,7 @@ const defaultProxyHandler = (req, res, url, proxy, proxyOpts) => proxy(req, res,
 const DEFAULT_METHODS = require('restana/libs/methods').filter(method => method !== 'all')
 const send = require('@polka/send-type')
 const PROXY_TYPES = ['http', 'lambda']
-const wsProxy = require('./lib/ws-proxy')
+const registerWebSocketRoutes = require('./lib/ws-proxy')
 
 const gateway = (opts) => {
   const proxyFactory = opts.proxyFactory || defaultProxyFactory
@@ -35,9 +35,8 @@ const gateway = (opts) => {
   })
 
   // processing websocket routes
-  const wsRoutes = opts.routes.filter(route => route.proxyType === 'websocket')
-  wsProxy({
-    routes: wsRoutes,
+  registerWebSocketRoutes({
+    routes: opts.routes.filter(route => route.proxyType === 'websocket'),
     server: router.getServer()
   })
 

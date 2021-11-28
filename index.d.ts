@@ -43,7 +43,7 @@ declare namespace fastgateway {
   }
 
   interface WebSocketHooks {
-    onOpen?: Function;
+    onOpen?: (ws: any, searchParams: URLSearchParams) => Promise<void>;
   }
 
   interface Hooks {
