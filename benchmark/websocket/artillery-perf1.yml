@@ -1,0 +1,11 @@
+config:
+  target: "ws://localhost:8080/echo"
+  phases:
+    - duration: 15  # test for 20 seconds
+      arrivalRate: 20 # every second, add 10 users
+      rampTo: 500 # ramp it up to 100 users over the 20s period
+      name: "Ramping up the load"
+scenarios:
+  - engine: "ws"
+    flow:
+      - send: 'echo me'
