@@ -12,12 +12,11 @@ gateway({
   }]
 }).start(8080)
 
-
 const service = http.createServer()
 service.on('upgrade', (request, socket, body) => {
   if (WebSocket.isWebSocket(request)) {
     const ws = new WebSocket(request, socket, body)
-    
+
     ws.on('message', (event) => {
       ws.send(event.data)
     })
