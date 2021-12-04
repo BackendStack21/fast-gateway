@@ -197,7 +197,7 @@ Example output:
 > NOTE: Please see `docs` configuration entry explained above.
 
 ### WebSockets support
-WebSockets proxying is supported since `v3.1.0`:
+WebSockets proxying is supported since `v3.1.0`. Main considerations:
 - WebSockets middlewares are not supported.
 - WebSocketRoute configuration definition:
   ```ts
