@@ -33,6 +33,19 @@ declare namespace fastgateway {
     hooks?: Hooks;
   }
 
+  interface WebSocketRoute {
+    proxyType: 'websocket';
+    proxyConfig?: {}; // https://github.com/faye/faye-websocket-node#initialization-options
+    prefix: string;
+    target: string;
+    subProtocols?: []; // https://github.com/faye/faye-websocket-node#subprotocol-negotiation
+    hooks?: WebSocketHooks;
+  }
+
+  interface WebSocketHooks {
+    onOpen?: (ws: any, searchParams: URLSearchParams) => Promise<void>;
+  }
+
   interface Hooks {
     onRequest?: Function,
     rewriteHeaders?: Function,
@@ -54,7 +67,7 @@ declare namespace fastgateway {
     pathRegex?: string;
     timeout?: number;
     targetOverride?: string;
-    routes: Route[];
+    routes: Route[] | WebSocketRoute[];
   }
 }
 

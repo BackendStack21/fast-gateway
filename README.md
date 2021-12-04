@@ -196,6 +196,41 @@ Example output:
 ```
 > NOTE: Please see `docs` configuration entry explained above.
 
+### WebSockets support
+WebSockets proxying is supported since `v3.1.0`. Main considerations:
+- WebSockets middlewares are not supported.
+- WebSocketRoute configuration definition:
+  ```ts
+  interface WebSocketRoute {
+    proxyType: 'websocket';
+    // https://github.com/faye/faye-websocket-node#initialization-options
+    proxyConfig?: {}; 
+    prefix: string;
+    target: string;
+    // https://github.com/faye/faye-websocket-node#subprotocol-negotiation
+    subProtocols?: []; 
+    hooks?: WebSocketHooks;
+  }
+
+  interface WebSocketHooks {
+    onOpen?: (ws: any, searchParams: URLSearchParams) => Promise<void>;
+  }
+  ```
+- The `/` route prefix is considered the default route. 
+
+#### Configuration example:
+```js
+gateway({
+  routes: [{
+    // ... other HTTP or WebSocket routes
+  }, {
+    proxyType: 'websocket',
+    prefix: '/echo',
+    target: 'ws://ws.ifelse.io'
+  }]
+}).start(PORT)
+```
+
 ## Timeouts and Unavailability 
 We can restrict requests timeouts globally or at service level using the `timeout` configuration.  
 

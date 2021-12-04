@@ -1,0 +1,11 @@
+config:
+  target: "ws://localhost:8080/echo"
+  phases:
+    - duration: 15
+      arrivalRate: 20
+      rampTo: 500
+      name: "Ramping up the load"
+scenarios:
+  - engine: "ws"
+    flow:
+      - send: 'echo me'
