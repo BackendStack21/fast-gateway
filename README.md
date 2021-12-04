@@ -198,6 +198,10 @@ Example output:
 
 ### WebSockets support
 WebSockets proxying is supported since `v3.1.0`. Main considerations:
+- The `faye-websocket` module dependency require to be installed:
+  ```bash
+  npm i faye-websocket
+  ```
 - WebSockets middlewares are not supported.
 - WebSocketRoute configuration definition:
   ```ts
