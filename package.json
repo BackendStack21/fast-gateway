@@ -7,7 +7,8 @@
   "scripts": {
     "test": "nyc mocha test/*.test.js",
     "format": "npx standard --fix",
-    "lint": "npx standard"
+    "lint": "npx standard",
+    "ws-bench": "npx artillery run benchmark/websocket/artillery-perf1.yml"
   },
   "repository": {
     "type": "git",
