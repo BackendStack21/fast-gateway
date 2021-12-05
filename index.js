@@ -35,10 +35,19 @@ const gateway = (opts) => {
   })
 
   // processing websocket routes
-  registerWebSocketRoutes({
-    routes: opts.routes.filter(route => route.proxyType === 'websocket'),
-    server: router.getServer()
-  })
+  const wsRoutes = opts.routes.filter(route => route.proxyType === 'websocket')
+  if (wsRoutes.length) {
+    if (typeof router.getServer !== 'function') {
+      throw new Error(
+        'Unable to retrieve the HTTP server instance. ' +
+        'If you are not using restana, make sure to provide an "app.getServer()" alternative method!'
+      )
+    }
+    registerWebSocketRoutes({
+      routes: wsRoutes,
+      server: router.getServer()
+    })
+  }
 
   // processing non-websocket routes
   opts.routes.filter(route => route.proxyType !== 'websocket').forEach(route => {
