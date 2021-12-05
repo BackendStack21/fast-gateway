@@ -3,7 +3,9 @@
 [![tests](https://github.com/BackendStack21/fast-gateway/actions/workflows/tests.yaml/badge.svg)](https://github.com/BackendStack21/fast-gateway/actions/workflows/tests.yaml)
 
 A super fast, framework agnostic Node.js API Gateway for the masses ❤️
-> Since v2.3.0, [AWS Lambda](https://www.youtube.com/watch?v=EBSdyoO3goc) proxying integration is supported via [`http-lambda-proxy`](https://www.npmjs.com/package/http-lambda-proxy) 🔥
+> Since v2.3.0, [AWS Lambda](https://www.youtube.com/watch?v=EBSdyoO3goc) proxying integration is supported via [`http-lambda-proxy`](https://www.npmjs.com/package/http-lambda-proxy) 🔥  
+
+> Since v3.1.0, WebSockets proxying is supported via [`faye-websocket`](https://www.npmjs.com/package/faye-websocket) 🔥
 
 ## Medium articles:
 - https://itnext.io/a-js-api-gateway-for-the-masses-a12fdb9e961c
