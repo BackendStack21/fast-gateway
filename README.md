@@ -7,6 +7,8 @@ A super fast, framework agnostic Node.js API Gateway for the masses ❤️
 
 > Since v3.1.0, WebSockets proxying is supported via [`faye-websocket`](https://www.npmjs.com/package/faye-websocket) 🔥
 
+*Also available for Docker: https://hub.docker.com/repository/docker/kyberneees/rproxy* 
+
 ## Medium articles:
 - https://itnext.io/a-js-api-gateway-for-the-masses-a12fdb9e961c
 
