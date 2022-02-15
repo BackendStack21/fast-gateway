@@ -38,7 +38,7 @@ declare namespace fastgateway {
     proxyConfig?: {}; // https://github.com/faye/faye-websocket-node#initialization-options
     prefix: string;
     target: string;
-    subProtocols?: []; // https://github.com/faye/faye-websocket-node#subprotocol-negotiation
+    subProtocols?: unknown[]; // https://github.com/faye/faye-websocket-node#subprotocol-negotiation
     hooks?: WebSocketHooks;
   }
 
@@ -67,7 +67,7 @@ declare namespace fastgateway {
     pathRegex?: string;
     timeout?: number;
     targetOverride?: string;
-    routes: Route[] | WebSocketRoute[];
+    routes: (Route | WebSocketRoute)[];
   }
 }
 
