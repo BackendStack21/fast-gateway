@@ -213,7 +213,9 @@ WebSockets proxying is supported since `v3.1.0`. Main considerations:
     proxyType: 'websocket';
     // https://github.com/faye/faye-websocket-node#initialization-options
     proxyConfig?: {}; 
-    prefix: string;
+    // used as micromatch matcher pattern: https://www.npmjs.com/package/micromatch
+    // prefix examples: '/graphql', '/ws-all/*', ['/rtp', '/rtp/*.flv'], '!/media/*.avi'
+    prefix: string; 
     target: string;
     // https://github.com/faye/faye-websocket-node#subprotocol-negotiation
     subProtocols?: []; 

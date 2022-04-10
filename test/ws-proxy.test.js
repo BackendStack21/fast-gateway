@@ -37,7 +37,7 @@ describe('ws-proxy', () => {
         target: 'ws://127.0.0.1:3000'
       }, {
         proxyType: 'websocket',
-        prefix: '/echo-auth',
+        prefix: '/*-auth',
         target: 'ws://127.0.0.1:3000',
         hooks: {
           onOpen (ws, searchParams) {
