@@ -322,7 +322,7 @@ gateway({
 > Afterwards:  
 > `curl --header "Host: api.company.tld:8080" http://127.0.0.1:8080/api-service-endpoint`
 
-You can optionally `npm install micromatch` and benefit from patterns support:
+Using micromatch patterns as hostname value:
 ```js
 const hostnames2prefix = [{
   prefix: '/admin',
