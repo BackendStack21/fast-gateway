@@ -14,16 +14,16 @@ A super fast, framework agnostic Node.js API Gateway for the masses ❤️
 Read more online:
 - A “.js” API Gateway for the masses: https://itnext.io/a-js-api-gateway-for-the-masses-a12fdb9e961c
 
-## Install
+# Install
 ```js
 npm i fast-gateway
 ```
 
-## Usage
+# Usage
 Next we describe two examples proxying HTTP and Lambda downstream services.  
 > For simplicity of reading, both examples are separated, however a single gateway configuration supports all routes configurations.
-### HTTP proxying
-#### Gateway
+## HTTP proxying
+### Gateway
 ```js
 const gateway = require('fast-gateway')
 const server = gateway({
@@ -35,7 +35,7 @@ const server = gateway({
 
 server.start(8080)
 ```
-#### Remote Service
+### Remote Service
 ```js
 const service = require('restana')()
 service.get('/get', (req, res) => res.send('Hello World!'))
@@ -43,8 +43,8 @@ service.get('/get', (req, res) => res.send('Hello World!'))
 service.start(3000)
 ```
 
-### AWS Lambda proxying
-#### Gateway
+## AWS Lambda proxying
+### Gateway
 ```bash
 npm i http-lambda-proxy
 ```
@@ -65,7 +65,7 @@ server.start(8080)
 ```
 > You might also want to read: [Setting AWS Credentials in Node.js](https://docs.aws.amazon.com/sdk-for-javascript/v2/developer-guide/setting-credentials-node.html)
 
-#### Function implementation
+### Function implementation
 ```js
 const serverless = require('serverless-http')
 const json = require('serverless-json-parser')
@@ -87,7 +87,7 @@ module.exports.handler = serverless(service)
 
 ```
 
-## Configuration options explained
+# Configuration options explained
 ```js
 {
   // Optional server instance. Any HTTP framework that supports the following signature is compatible:
@@ -177,10 +177,10 @@ module.exports.handler = serverless(service)
   }]
 }
 ```
-### Hooks
+## Default hooks
 For developers reference, default hooks implementation are located in `lib/default-hooks.js` file.
 
-## The "*GET /services.json*" endpoint
+# The "*GET /services.json*" endpoint
 Since version `1.3.5` the gateway exposes minimal documentation about registered services at: `GET /services.json`
 
 Example output:
@@ -201,7 +201,7 @@ Example output:
 ```
 > NOTE: Please see `docs` configuration entry explained above.
 
-## WebSockets support
+# WebSockets
 WebSockets proxying is supported since `v3.1.0`. Main considerations:
 - The `faye-websocket` module dependency require to be installed:
   ```bash
@@ -229,7 +229,7 @@ WebSockets proxying is supported since `v3.1.0`. Main considerations:
   ```
 - The `/` route prefix is considered the default route. 
 
-#### Configuration example
+## Configuration example
 ```js
 gateway({
   routes: [{
@@ -241,8 +241,8 @@ gateway({
   }]
 }).start(PORT)
 ```
-## Traffic Management
-### Timeouts and Unavailability 
+# Traffic Management
+## Timeouts and Unavailability 
 We can restrict requests timeouts globally or at service level using the `timeout` configuration.  
 
 You can also define endpoints specific timeout using the property `timeout` of the request object, normally inside a middleware:
@@ -251,12 +251,12 @@ req.timeout = 500 // define a 500ms timeout on a custom request.
 ```
 > NOTE: You might want to also check https://www.npmjs.com/package/middleware-if-unless
 
-### Circuit Breakers
+## Circuit Breakers
 By using the `proxyHandler` hook, developers can optionally intercept and modify the default gateway routing behavior right before the origin request is proxied to the remote service. Therefore, connecting advanced monitoring mechanisms like [Circuit Breakers](https://martinfowler.com/bliki/CircuitBreaker.html) is rather simple. 
 
 Please see the `demos/circuitbreaker.js` example for more details using the `opossum` library.
 
-### Rate Limiting
+## Rate Limiting
 [Rate limiting](https://en.wikipedia.org/wiki/Rate_limiting), as well many other gateway level features can be easily implemented using `fast-gateway`:
 ```js
 const rateLimit = require('express-rate-limit')
@@ -288,7 +288,7 @@ gateway({
 ```
 > In this example we have used the [express-rate-limit](https://www.npmjs.com/package/express-rate-limit) module.
 
-## Hostnames support
+# Hostnames support
 We can also implement hostnames support with fast-gateway, basically we translate hostnames to prefixes: 
 ```js
 ...
@@ -338,17 +338,17 @@ const hostnames2prefix = [{
 ```
 For more details, please checkout the `basic-hostnames.js` demo.
 
-## Gateway level caching
+# Caching
 Caching support is provided by the `http-cache-middleware` module. https://www.npmjs.com/package/http-cache-middleware
 
-### Introduction
+## Introduction
 Enabling proper caching strategies at gateway level will drastically reduce the latency of your system,
 as it reduces network round-trips and remote services processing.  
 We are talking here about improvements in response times from `X ms` to `~2ms`, as an example.  
 > We use the `http-cache-middleware` module to support gateway level caching. Read more about it: https://github.com/jkyberneees/http-cache-middleware
 
-###  Setting up gateway level cache available for all services
-#### Single node cache (memory)
+## Caching responses from all services
+### Single node cache (memory)
 ```js
 // cache middleware
 const cache = require('http-cache-middleware')()
@@ -361,7 +361,7 @@ const server = gateway({
 ```
 > Memory storage is recommended if there is only one gateway instance and you are not afraid of losing cache data.
 
-#### Multi nodes cache (redis)
+### Multi nodes cache (redis)
 ```js
 // redis setup
 const CacheManager = require('cache-manager')
@@ -388,13 +388,13 @@ const server = gateway({
 ```
 > Required if there are more than one gateway instances
 
-### Caching remote services response
+## Enabling caching on remote services
 https://github.com/jkyberneees/http-cache-middleware#enabling-cache-for-service-endpoints
 
-### Invalidating caches
+## Cache invalidation
 https://github.com/jkyberneees/http-cache-middleware#invalidating-caches
 
-### Custom cache keys
+## Custom cache keys
 Cache keys are generated using: `req.method + req.url`, however, for indexing/segmenting requirements it makes sense to allow cache keys extensions.  
 Unfortunately, this feature can't be implemented at remote service level, because the gateway needs to know the entire lookup key when a request
 reaches the gateway.  
@@ -412,7 +412,7 @@ routes: [{
 ```
 > In this example we also distinguish cache entries by `user.id`, very common case!
 
-### Enabling/Disabling cache
+## Disabling caching programmatically
 You can also disable cache checks for certain requests programmatically:
 ```js
 routes: [{
@@ -425,25 +425,25 @@ routes: [{
 }]
 ```
 
-## Related projects
+# Related projects
 - middleware-if-unless (https://www.npmjs.com/package/middleware-if-unless)
 - fast-proxy-lite (https://www.npmjs.com/package/fast-proxy-lite)
 - http-lambda-proxy (https://www.npmjs.com/package/http-lambda-proxy)
 - restana (https://www.npmjs.com/package/restana)
 
-## Benchmarks
+# Benchmarks
 https://github.com/jkyberneees/nodejs-proxy-benchmarks
 
-## Sponsors
+# Sponsors
 - (INACTIVE) Kindly sponsored by [ShareNow](https://www.share-now.com/), a company that promotes innovation!  
 
-## Support / Donate 💚
+# Support / Donate 💚
 You can support the maintenance of this project: 
 - PayPal: https://www.paypal.me/kyberneees
 - [TRON](https://www.binance.com/en/buy-TRON) Wallet: `TJ5Bbf9v4kpptnRsePXYDvnYcYrS5Tyxus`
 
-## Breaking Changes
-### v3.x
+# Breaking Changes
+## v3.x
 - The `fast-proxy-lite` module is used by default to support `http` proxy type 🔥. This means, no `undici` or `http2` are supported by default.
 - The old `fast-proxy` module is available under the `http-legacy` proxy type, but the module is not installed by default.
 - Proxy configuration is now generalized under the `proxyConfig` property.
