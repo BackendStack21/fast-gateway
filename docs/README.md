@@ -69,10 +69,8 @@ server.start(8080)
 ```js
 const serverless = require('serverless-http')
 const json = require('serverless-json-parser')
-const query = require('connect-query')
 
 const service = require('restana')()
-service.use(query())
 service.use(json())
 
 // routes
