@@ -22,7 +22,7 @@ npm i fast-gateway
 ## Usage
 Next we describe two examples proxying HTTP and Lambda downstream services.  
 > For simplicity of reading, both examples are separated, however a single gateway configuration supports all routes configurations.
-### HTTP Proxying
+### HTTP proxying
 #### Gateway
 ```js
 const gateway = require('fast-gateway')
@@ -43,7 +43,7 @@ service.get('/get', (req, res) => res.send('Hello World!'))
 service.start(3000)
 ```
 
-### Lambda Proxying
+### AWS Lambda proxying
 #### Gateway
 ```bash
 npm i http-lambda-proxy
@@ -65,12 +65,13 @@ server.start(8080)
 ```
 > You might also want to read: [Setting AWS Credentials in Node.js](https://docs.aws.amazon.com/sdk-for-javascript/v2/developer-guide/setting-credentials-node.html)
 
-#### Lambda Implementation
+#### Function implementation
 ```js
 const serverless = require('serverless-http')
 const json = require('serverless-json-parser')
+const restana = require('restana')
 
-const service = require('restana')()
+const service = restana()
 service.use(json())
 
 // routes
