@@ -9,6 +9,7 @@ const DEFAULT_METHODS = require('restana/libs/methods').filter(method => method 
 const send = require('@polka/send-type')
 const PROXY_TYPES = ['http', 'lambda']
 const registerWebSocketRoutes = require('./lib/ws-proxy')
+const url = require('url')
 
 const gateway = (opts) => {
   const proxyFactory = opts.proxyFactory || defaultProxyFactory
@@ -118,7 +119,7 @@ const handler = (route, proxy, proxyHandler) => async (req, res, next) => {
         request: {
           timeout: req.timeout || route.timeout
         },
-        queryString: req.query
+        queryString: url.parse(req.url, false).query
       }, route.hooks)
 
       proxyHandler(req, res, req.url, proxy, proxyOpts)
