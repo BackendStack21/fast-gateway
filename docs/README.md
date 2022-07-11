@@ -136,8 +136,10 @@ module.exports.handler = serverless(service)
     // Optional service requests timeout value (given in milliseconds). Default value: '0' (DISABLED)
     // This setting apply only when proxyType = 'http'
     timeout: 0,
-    // route prefix
+    // Route prefix
     prefix: '/public',
+    // Uses the raw request query string value instead of req.query. Default value: false
+    disableQsOverwrite: true,
     // Optional documentation configuration (unrestricted schema)
     docs: {
       name: 'Public Service',
