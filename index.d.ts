@@ -31,6 +31,7 @@ declare namespace fastgateway {
     middlewares?: Function[];
     urlRewrite?: Function;
     hooks?: Hooks;
+    disableQsOverride?: boolean;
   }
 
   interface WebSocketRoute {

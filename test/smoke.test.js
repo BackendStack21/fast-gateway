@@ -55,7 +55,7 @@ describe('API Gateway', () => {
     remote.post('/endpoint-proxy-methods', (req, res) => res.send({
       name: 'endpoint-proxy-methods'
     }))
-    remote.get('/qs', (req, res) => {
+    remote.get(['/qs-no-override', '/qs'], (req, res) => {
       res.send(req.query)
     })
 
@@ -314,6 +314,16 @@ describe('API Gateway', () => {
       .expect(200)
       .then((response) => {
         expect(response.body.name).to.equal('fast-gateway')
+        expect(response.body.category).to.equal('js')
+      })
+  })
+
+  it('(Should NOT overwrite query string using req.query) GET /qs-no-override - 200', async () => {
+    await request(gateway)
+      .get('/qs-no-override?name=nodejs&category=js')
+      .expect(200)
+      .then((response) => {
+        expect(response.body.name).to.equal('nodejs')
         expect(response.body.category).to.equal('js')
       })
   })
