@@ -55,7 +55,7 @@ describe('API Gateway', () => {
     remote.post('/endpoint-proxy-methods', (req, res) => res.send({
       name: 'endpoint-proxy-methods'
     }))
-    remote.get(['/qs-no-override', '/qs'], (req, res) => {
+    remote.get(['/qs-no-overwrite', '/qs'], (req, res) => {
       res.send(req.query)
     })
 
@@ -320,7 +320,7 @@ describe('API Gateway', () => {
 
   it('(Should NOT overwrite query string using req.query) GET /qs-no-override - 200', async () => {
     await request(gateway)
-      .get('/qs-no-override?name=nodejs&category=js')
+      .get('/qs-no-overwrite?name=nodejs&category=js')
       .expect(200)
       .then((response) => {
         expect(response.body.name).to.equal('nodejs')
