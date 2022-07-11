@@ -118,7 +118,7 @@ const handler = (route, proxy, proxyHandler) => async (req, res, next) => {
         request: {
           timeout: req.timeout || route.timeout
         },
-        queryString: route.disableQsOverride ? null : req.query
+        queryString: route.disableQsOverwrite ? null : req.query
       }, route.hooks)
 
       proxyHandler(req, res, req.url, proxy, proxyOpts)

@@ -88,7 +88,7 @@ module.exports = async () => {
     {
       pathRegex: '',
       prefix: '/qs-no-override',
-      disableQsOverride: true,
+      disableQsOverwrite: true,
       prefixRewrite: '/qs-no-override',
       target: 'http://localhost:3000',
       methods: ['GET'],
