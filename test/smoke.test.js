@@ -318,7 +318,7 @@ describe('API Gateway', () => {
       })
   })
 
-  it('(Should NOT overwrite query string using req.query) GET /qs-no-override - 200', async () => {
+  it('(Should NOT overwrite query string using req.query) GET /qs-no-overwrite - 200', async () => {
     await request(gateway)
       .get('/qs-no-overwrite?name=nodejs&category=js')
       .expect(200)
