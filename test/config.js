@@ -87,6 +87,19 @@ module.exports = async () => {
     },
     {
       pathRegex: '',
+      prefix: '/qs-no-overwrite',
+      disableQsOverwrite: true,
+      prefixRewrite: '/qs-no-overwrite',
+      target: 'http://localhost:3000',
+      methods: ['GET'],
+      hooks: {
+        onRequest: (req) => {
+          req.query.name = 'fast-gateway'
+        }
+      }
+    },
+    {
+      pathRegex: '',
       prefix: '/qs2',
       prefixRewrite: '/qs',
       target: 'http://localhost:3000',
