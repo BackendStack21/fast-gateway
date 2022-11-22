@@ -68,7 +68,7 @@ declare namespace fastgateway {
     pathRegex?: string;
     timeout?: number;
     targetOverride?: string;
-    routes: Route[] | WebSocketRoute[];
+    routes: (Route | WebSocketRoute)[];
   }
 }
 
