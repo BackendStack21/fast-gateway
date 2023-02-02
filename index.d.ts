@@ -38,6 +38,7 @@ declare namespace fastgateway {
     proxyType: 'websocket';
     proxyConfig?: {}; // https://github.com/faye/faye-websocket-node#initialization-options
     prefix: string;
+    prefixRewrite?: string;
     target: string;
     subProtocols?: []; // https://github.com/faye/faye-websocket-node#subprotocol-negotiation
     hooks?: WebSocketHooks;
