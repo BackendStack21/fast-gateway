@@ -6,6 +6,8 @@
 [![TypeScript support](https://badgen.net/npm/types/fast-gateway)](https://www.npmjs.com/package/fast-gateway)
 [![Github stars](https://badgen.net/github/stars/jkyberneees/fast-gateway?icon=github)](https://github.com/jkyberneees/fast-gateway)
 
+<img src="docs/fast-gateway-logo.svg" width="400">  
+
 A super fast, framework agnostic Node.js API Gateway for the masses ❤️  
 *Docker images: https://hub.docker.com/repository/docker/kyberneees/rproxy* 
 > Since v2.3.0, [AWS Lambda](https://www.youtube.com/watch?v=EBSdyoO3goc) proxying integration is supported via [`http-lambda-proxy`](https://www.npmjs.com/package/http-lambda-proxy) 🔥  
