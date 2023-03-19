@@ -108,17 +108,21 @@ const gateway = (opts) => {
 }
 
 const handler = (route, proxy, proxyHandler) => async (req, res, next) => {
+  const { urlRewrite, prefix, prefixRewrite, hooks, timeout, disableQsOverwrite } = route
+  const { onRequest } = hooks
+
   try {
-    req.url = route.urlRewrite
-      ? route.urlRewrite(req)
-      : req.url.replace(route.prefix, route.prefixRewrite)
-    const shouldAbortProxy = await route.hooks.onRequest(req, res)
+    req.url = urlRewrite
+      ? urlRewrite(req)
+      : req.url.replace(prefix, prefixRewrite)
+
+    const shouldAbortProxy = await onRequest(req, res)
     if (!shouldAbortProxy) {
       const proxyOpts = Object.assign({
         request: {
-          timeout: req.timeout || route.timeout
+          timeout: req.timeout || timeout
         },
-        queryString: route.disableQsOverwrite ? null : req.query
+        queryString: disableQsOverwrite ? null : req.query
       }, route.hooks)
 
       proxyHandler(req, res, req.url, proxy, proxyOpts)
