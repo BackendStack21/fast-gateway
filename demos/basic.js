@@ -3,7 +3,7 @@
 const gateway = require('./../index')
 const PORT = process.env.PORT || 8080
 
-var { expressjwt: jwt } = require('express-jwt')
+const { expressjwt: jwt } = require('express-jwt')
 
 gateway({
   middlewares: [
