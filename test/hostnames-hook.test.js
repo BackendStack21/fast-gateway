@@ -7,16 +7,20 @@ describe('hostnames-hook', () => {
   let hostnamesHook = null
 
   it('initialize', async () => {
-    hostnamesHook = require('./../lib/hostnames-hook')([{
-      prefix: '/nodejs',
-      hostname: 'nodejs.org'
-    }, {
-      prefix: '/github',
-      hostname: 'github.com'
-    }, {
-      prefix: '/users',
-      hostname: '*.company.tld'
-    }])
+    hostnamesHook = require('./../lib/hostnames-hook')([
+      {
+        prefix: '/nodejs',
+        hostname: 'nodejs.org'
+      },
+      {
+        prefix: '/github',
+        hostname: 'github.com'
+      },
+      {
+        prefix: '/users',
+        hostname: '*.company.tld'
+      }
+    ])
   })
 
   it('is match - nodejs.org', (cb) => {
