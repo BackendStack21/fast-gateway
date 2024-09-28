@@ -15,12 +15,16 @@ describe('API Gateway', () => {
 
     // init remote service
     remote = require('restana')({})
-    remote.get('/endpoint-proxy', (req, res) => res.send({
-      name: 'endpoint-proxy'
-    }))
-    remote.get('/info', (req, res) => res.send({
-      name: 'fast-gateway'
-    }))
+    remote.get('/endpoint-proxy', (req, res) =>
+      res.send({
+        name: 'endpoint-proxy'
+      })
+    )
+    remote.get('/info', (req, res) =>
+      res.send({
+        name: 'fast-gateway'
+      })
+    )
     remote.get('/chunked', (req, res) => {
       res.write('user')
       res.write('1')
@@ -46,15 +50,21 @@ describe('API Gateway', () => {
       }, 2000)
     })
     remote.post('/204', (req, res) => res.send(204))
-    remote.get('/endpoint-proxy-methods', (req, res) => res.send({
-      name: 'endpoint-proxy-methods'
-    }))
-    remote.put('/endpoint-proxy-methods-put', (req, res) => res.send({
-      name: 'endpoint-proxy-methods-put'
-    }))
-    remote.post('/endpoint-proxy-methods', (req, res) => res.send({
-      name: 'endpoint-proxy-methods'
-    }))
+    remote.get('/endpoint-proxy-methods', (req, res) =>
+      res.send({
+        name: 'endpoint-proxy-methods'
+      })
+    )
+    remote.put('/endpoint-proxy-methods-put', (req, res) =>
+      res.send({
+        name: 'endpoint-proxy-methods-put'
+      })
+    )
+    remote.post('/endpoint-proxy-methods', (req, res) =>
+      res.send({
+        name: 'endpoint-proxy-methods'
+      })
+    )
     remote.get(['/qs-no-overwrite', '/qs'], (req, res) => {
       res.send(req.query)
     })
@@ -67,7 +77,9 @@ describe('API Gateway', () => {
       .get('/services.json')
       .expect(200)
       .then((response) => {
-        expect(response.body.find(service => service.prefix === '/users')).to.deep.equal({
+        expect(
+          response.body.find((service) => service.prefix === '/users')
+        ).to.deep.equal({
           prefix: '/users',
           docs: {
             name: 'Users Service',
@@ -79,9 +91,7 @@ describe('API Gateway', () => {
   })
 
   it('remote is proxied /users/response-time/204 - 204', async () => {
-    await request(gateway)
-      .post('/users/response-time/204')
-      .expect(204)
+    await request(gateway).post('/users/response-time/204').expect(204)
   })
 
   it('(cors present) OPTIONS /users/response-time/info - 204', async () => {
@@ -141,9 +151,7 @@ describe('API Gateway', () => {
   })
 
   it('(cache expire) GET /users/cache-expire - 200', async () => {
-    await request(gateway)
-      .get('/users/cache-expire')
-      .expect(200)
+    await request(gateway).get('/users/cache-expire').expect(200)
   })
 
   it('(cache created 2) GET /users/cache - 200', async () => {
@@ -156,9 +164,7 @@ describe('API Gateway', () => {
   })
 
   it('(cache expire pattern) GET /users/cache-expire-pattern - 200', async () => {
-    await request(gateway)
-      .get('/users/cache-expire-pattern')
-      .expect(200)
+    await request(gateway).get('/users/cache-expire-pattern').expect(200)
   })
 
   it('(cache created 3) GET /users/cache - 200', async () => {
@@ -171,14 +177,21 @@ describe('API Gateway', () => {
   })
 
   it('Should timeout on GET /longop - 504', async () => {
-    return request(gateway)
-      .get('/users/longop')
-      .expect(504)
+    return request(gateway).get('/users/longop').expect(504)
   })
 
   it('GET /users/info - 200', async () => {
     await request(gateway)
       .get('/users/info')
+      .expect(200)
+      .then((response) => {
+        expect(response.body.name).to.equal('fast-gateway')
+      })
+  })
+
+  it('GET /users-regex/info - 200', async () => {
+    await request(gateway)
+      .get('/users-regex/info')
       .expect(200)
       .then((response) => {
         expect(response.body.name).to.equal('fast-gateway')
@@ -213,9 +226,7 @@ describe('API Gateway', () => {
   })
 
   it('PUT /endpoint-proxy-methods - 404', async () => {
-    await request(gateway)
-      .put('/endpoint-proxy-methods')
-      .expect(404)
+    await request(gateway).put('/endpoint-proxy-methods').expect(404)
   })
 
   it('PUT /endpoint-proxy-methods-put - 200', async () => {
@@ -228,9 +239,7 @@ describe('API Gateway', () => {
   })
 
   it('GET /endpoint-proxy-sdfsfsfsf - should fail with 404 because pathRegex=""', async () => {
-    await request(gateway)
-      .get('/endpoint-proxy-sdfsfsfsf')
-      .expect(404)
+    await request(gateway).get('/endpoint-proxy-sdfsfsfsf').expect(404)
   })
 
   it('(aggregation cache created) GET /users/proxy-aborted/info - 200', async () => {
@@ -242,13 +251,21 @@ describe('API Gateway', () => {
       })
   })
 
-  it('(aggregation cache hit) GET /users/proxy-aborted/info - 200', async () => {
+  it('(aggregation) GET /regex/match - 200', async () => {
     await request(gateway)
-      .get('/users/proxy-aborted/info')
+      .get('/regex/match')
       .expect(200)
       .then((response) => {
-        expect(response.text).to.equal('Hello World!')
-        expect(response.headers['x-cache-hit']).to.equal('1')
+        expect(response.text).to.equal('Matched via Regular Expression!')
+      })
+  })
+
+  it('(aggregation) GET /regex/match/match/match - 200', async () => {
+    await request(gateway)
+      .get('/regex/match/match/match')
+      .expect(200)
+      .then((response) => {
+        expect(response.text).to.equal('Matched via Regular Expression!')
       })
   })
 
@@ -266,9 +283,7 @@ describe('API Gateway', () => {
   })
 
   it('POST /users/info - 404', async () => {
-    await request(gateway)
-      .post('/users/info')
-      .expect(404)
+    await request(gateway).post('/users/info').expect(404)
   })
 
   it('(hooks) GET /users/response-time/info - 200', async () => {
