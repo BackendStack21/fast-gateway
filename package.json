@@ -32,8 +32,7 @@
     "fast-proxy-lite": "^1.1.2",
     "http-cache-middleware": "^1.4.1",
     "restana": "^4.9.9",
-    "stream-to-array": "^2.3.0",
-    "micromatch": "^4.0.8"
+    "stream-to-array": "^2.3.0"
   },
   "files": [
     "lib/",
@@ -47,6 +46,7 @@
     "artillery": "^2.0.21",
     "aws-sdk": "^2.1691.0",
     "chai": "^4.5.0",
+    "consistent-hash": "^1.2.2",
     "cors": "^2.8.5",
     "express": "^5.0.1",
     "express-jwt": "^7.7.8",
