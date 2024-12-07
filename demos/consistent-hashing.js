@@ -8,7 +8,7 @@ const ConsistentHash = require('consistent-hash')
 const targets = [
   'http://localhost:3000',
   'http://localhost:3001',
-  'http://localhost:3002',
+  'http://localhost:3002'
 ]
 
 const consistentHash = new ConsistentHash()
@@ -23,9 +23,9 @@ gateway({
 
         return proxy(req, res, url, proxyOpts)
       },
-      prefix: '/api',
-    },
-  ],
+      prefix: '/api'
+    }
+  ]
 })
   .start(8080)
   .then(() => console.log('API Gateway listening on 8080 port!'))
