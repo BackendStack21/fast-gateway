@@ -29,6 +29,7 @@
   "homepage": "https://github.com/jkyberneees/fast-gateway#readme",
   "dependencies": {
     "@polka/send-type": "^0.5.2",
+    "@types/node": "^22.13.11",
     "fast-proxy-lite": "^1.1.2",
     "http-cache-middleware": "^1.4.1",
     "micromatch": "^4.0.8",
