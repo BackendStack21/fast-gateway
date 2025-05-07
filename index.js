@@ -15,7 +15,7 @@ const PROXY_TYPES = ['http', 'lambda']
 const registerWebSocketRoutes = require('./lib/ws-proxy')
 
 const gateway = (opts) => {
-  const proxyFactory = (...args) => opts.proxyFactory?.(...args) ?? defaultProxyFactory(...args);
+  const proxyFactory = opts.proxyFactory ? (...args) => ((r) => r === undefined ? defaultProxyFactory(...args) : r)(opts.proxyFactory(...args)) : defaultProxyFactory;
 
   opts = Object.assign(
     {
