@@ -131,8 +131,12 @@ module.exports.handler = serverless(service)
   timeout: 0,
   // Optional "target" value that overrides the routes "target" config value. Feature intended for testing purposes.
   targetOverride: "https://yourdev.api-gateway.com",
-  // Optional "Proxy Factory" implementation, allows the integration of custom proxying strategies.
-  // Default value: require('fast-proxy-lite/lib/proxy-factory')
+  // Optional "Proxy Factory" implementation, allows integration of custom proxying strategies.
+  // Behavior:
+  // - If it returns any value (e.g. a custom proxy), that value will be used directly.
+  // - If it returns `undefined` (or does not return anything), the default factory from `fast-gateway` will be used as a fallback.
+  // - If it returns `null`, no proxy will be used and the default factory will be skipped entirely.
+  // Default: the built-in proxy factory from `fast-gateway`
   proxyFactory: ({ proxyType, opts, route }) => {...}
 
   // HTTP proxy
