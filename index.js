@@ -15,7 +15,16 @@ const PROXY_TYPES = ['http', 'lambda']
 const registerWebSocketRoutes = require('./lib/ws-proxy')
 
 const gateway = (opts) => {
-  const proxyFactory = opts.proxyFactory ? (...args) => ((r) => r === undefined ? defaultProxyFactory(...args) : r)(opts.proxyFactory(...args)) : defaultProxyFactory
+  let proxyFactory
+
+  if (opts.proxyFactory) {
+    proxyFactory = (...args) => {
+      const result = opts.proxyFactory(...args)
+      return result === undefined ? defaultProxyFactory(...args) : result
+    }
+  } else {
+    proxyFactory = defaultProxyFactory
+  }
 
   opts = Object.assign(
     {
@@ -76,7 +85,9 @@ const gateway = (opts) => {
       }
 
       // retrieve default hooks for proxy
-      const hooksForDefaultType = isDefaultProxyType ? require('./lib/default-hooks')[proxyType] : {}
+      const hooksForDefaultType = isDefaultProxyType
+        ? require('./lib/default-hooks')[proxyType]
+        : {}
       const { onRequestNoOp = NOOP, onResponse = NOOP } = hooksForDefaultType
 
       // populating required NOOPS
