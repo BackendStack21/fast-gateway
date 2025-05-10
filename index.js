@@ -9,12 +9,13 @@ const defaultProxyHandler = (req, res, url, proxy, proxyOpts) =>
 const DEFAULT_METHODS = require('restana/libs/methods').filter(
   (method) => method !== 'all'
 )
+const NOOP = (req, res) => {}
 const send = require('@polka/send-type')
 const PROXY_TYPES = ['http', 'lambda']
 const registerWebSocketRoutes = require('./lib/ws-proxy')
 
 const gateway = (opts) => {
-  const proxyFactory = opts.proxyFactory || defaultProxyFactory
+  const proxyFactory = opts.proxyFactory ? (...args) => ((r) => r === undefined ? defaultProxyFactory(...args) : r)(opts.proxyFactory(...args)) : defaultProxyFactory
 
   opts = Object.assign(
     {
@@ -67,16 +68,16 @@ const gateway = (opts) => {
 
       // retrieve proxy type
       const { proxyType = 'http' } = route
-      if (!PROXY_TYPES.includes(proxyType)) {
+      const isDefaultProxyType = PROXY_TYPES.includes(proxyType)
+      if (!opts.proxyFactory && !isDefaultProxyType) {
         throw new Error(
           'Unsupported proxy type, expecting one of ' + PROXY_TYPES.toString()
         )
       }
 
       // retrieve default hooks for proxy
-      const { onRequestNoOp, onResponse } = require('./lib/default-hooks')[
-        proxyType
-      ]
+      const hooksForDefaultType = isDefaultProxyType ? require('./lib/default-hooks')[proxyType] : {}
+      const { onRequestNoOp = NOOP, onResponse = NOOP } = hooksForDefaultType
 
       // populating required NOOPS
       route.hooks = route.hooks || {}
