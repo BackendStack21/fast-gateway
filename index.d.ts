@@ -70,7 +70,7 @@ declare namespace fastgateway {
 
   interface Options<P extends restana.Protocol> {
     server?: Object | restana.Service<P> | Express.Application
-    proxyFactory?: (opts: ProxyFactoryOpts) => Function|null|undefined
+    proxyFactory?: (opts: ProxyFactoryOpts) => Function | null | undefined
     restana?: {}
     middlewares?: Function[]
     pathRegex?: string
