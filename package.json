@@ -42,7 +42,6 @@
     "LICENSE"
   ],
   "devDependencies": {
-    "@polka/send-type": "^0.5.2",
     "@types/node": "^22.13.11",
     "@types/express": "^5.0.0",
     "artillery": "^2.0.21",
