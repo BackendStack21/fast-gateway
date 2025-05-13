@@ -76,6 +76,7 @@ declare namespace fastgateway {
     pathRegex?: string
     timeout?: number
     targetOverride?: string
+    servicesJsonRoute?: boolean
     routes: (Route | WebSocketRoute)[]
   }
 }

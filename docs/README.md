@@ -138,6 +138,9 @@ module.exports.handler = serverless(service)
   // - If it returns `null`, no proxy will be used and the default factory will be skipped entirely.
   // Default: the built-in proxy factory from `fast-gateway`
   proxyFactory: ({ proxyType, opts, route }) => {...}
+   // Optional toggle for exposing minimal documentation of registered services at `GET /services.json`
+   // Default value: true
+  servicesJsonRoute: true
 
   // HTTP proxy
   routes: [{
@@ -213,6 +216,8 @@ For developers reference, default hooks implementation are located in `lib/defau
 # The "_GET /services.json_" endpoint
 
 Since version `1.3.5` the gateway exposes minimal documentation about registered services at: `GET /services.json`
+
+Since version `4.2.0`, the `/services.json` route can be disabled by setting `servicesJsonRoute: false` in the gateway options.
 
 Example output:
 
