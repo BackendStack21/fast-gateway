@@ -1,7 +1,7 @@
 import * as restana from 'restana'
 
 declare namespace fastgateway {
-  type Type = 'http' | 'lambda' | (string & {})
+  type ProxyType = 'http' | 'lambda' | (string & {})
 
   type Method =
     | 'GET'
@@ -20,13 +20,13 @@ declare namespace fastgateway {
   }
 
   interface ProxyFactoryOpts {
-    proxyType: Type
+    proxyType: ProxyType
     opts: {}
     route: Route
   }
 
   interface Route {
-    proxyType?: Type
+    proxyType?: ProxyType
     proxyConfig?: {}
     proxyHandler?: Function
     pathRegex?: string
