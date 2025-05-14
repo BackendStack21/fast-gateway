@@ -1,7 +1,7 @@
 import * as restana from 'restana'
 
 declare namespace fastgateway {
-  type Type = 'http' | 'lambda'
+  type Type = 'http' | 'lambda' | (string & {})
 
   type Method =
     | 'GET'
@@ -20,7 +20,7 @@ declare namespace fastgateway {
   }
 
   interface ProxyFactoryOpts {
-    proxyType: string
+    proxyType: Type
     opts: {}
     route: Route
   }
@@ -70,7 +70,7 @@ declare namespace fastgateway {
 
   interface Options<P extends restana.Protocol> {
     server?: Object | restana.Service<P> | Express.Application
-    proxyFactory?: (opts: ProxyFactoryOpts) => Function
+    proxyFactory?: (opts: ProxyFactoryOpts) => Function | null | undefined
     restana?: {}
     middlewares?: Function[]
     pathRegex?: string
