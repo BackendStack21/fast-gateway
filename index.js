@@ -10,7 +10,6 @@ const DEFAULT_METHODS = require('restana/libs/methods').filter(
   (method) => method !== 'all'
 )
 const NOOP = (req, res) => {}
-const send = require('@polka/send-type')
 const PROXY_TYPES = ['http', 'lambda']
 const registerWebSocketRoutes = require('./lib/ws-proxy')
 
@@ -29,7 +28,8 @@ const gateway = (opts) => {
   opts = Object.assign(
     {
       middlewares: [],
-      pathRegex: '/*'
+      pathRegex: '/*',
+      enableServicesEndpoint: true
     },
     opts
   )
@@ -46,9 +46,13 @@ const gateway = (opts) => {
     prefix: route.prefix,
     docs: route.docs
   }))
-  router.get('/services.json', (req, res) => {
-    send(res, 200, services)
-  })
+  if (opts.enableServicesEndpoint) {
+    router.get('/services.json', (req, res) => {
+      res.statusCode = 200
+      res.setHeader('Content-Type', 'application/json')
+      res.end(JSON.stringify(services))
+    })
+  }
 
   // processing websocket routes
   const wsRoutes = opts.routes.filter(
