@@ -29,7 +29,7 @@ const gateway = (opts) => {
     {
       middlewares: [],
       pathRegex: '/*',
-      servicesJsonRoute: true
+      enableServicesEndpoint: true
     },
     opts
   )
@@ -46,7 +46,7 @@ const gateway = (opts) => {
     prefix: route.prefix,
     docs: route.docs
   }))
-  if (opts.servicesJsonRoute) {
+  if (opts.enableServicesEndpoint) {
     router.get('/services.json', (req, res) => {
       res.statusCode = 200
       res.setHeader('Content-Type', 'application/json')
