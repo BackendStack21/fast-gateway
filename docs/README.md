@@ -201,6 +201,11 @@ module.exports.handler = serverless(service)
       onResponse (req, res, stream) {
         // do some post-processing here
         // ...
+      },
+      onError (err, req, res) {
+        // called when the request pipeline throws (e.g., onRequest error, proxy failure)
+        // hook failures are silently caught — the original error still propagates to the client
+        // can be sync or async
       }
 
       // if proxyType= 'http', other options allowed https://www.npmjs.com/package/fast-proxy-lite#opts
