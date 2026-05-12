@@ -59,7 +59,7 @@ declare namespace fastgateway {
     onRequest?: Function
     rewriteHeaders?: Function
     onResponse?: Function
-    onError?: (error: Error, req: import('http').IncomingMessage, res: import('http').ServerResponse) => void
+    onError?: Function
     rewriteRequestHeaders?: Function
     request?: {
       timeout?: number

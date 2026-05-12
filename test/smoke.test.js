@@ -5,6 +5,7 @@ const expect = require('chai').expect
 const request = require('supertest')
 const fastGateway = require('../index')
 const config = require('./config')
+const { onErrorCalls } = config
 
 let remote, gateway
 
@@ -302,6 +303,54 @@ describe('API Gateway', () => {
       .then((response) => {
         expect(response.body.message).to.equal('ups, pre-processing error...')
       })
+  })
+
+  it('(hooks) onError — sync hook called with err, req, res', async () => {
+    onErrorCalls.length = 0
+
+    await request(gateway)
+      .get('/users/on-error-sync/info')
+      .expect(500)
+
+    expect(onErrorCalls).to.have.lengthOf(1)
+    expect(onErrorCalls[0].type).to.equal('sync')
+    expect(onErrorCalls[0].err.message).to.equal('sync hook test')
+    expect(onErrorCalls[0].url).to.equal('/info')
+  })
+
+  it('(hooks) onError — async hook called and awaited', async () => {
+    onErrorCalls.length = 0
+
+    await request(gateway)
+      .get('/users/on-error-async/info')
+      .expect(500)
+
+    expect(onErrorCalls).to.have.lengthOf(1)
+    expect(onErrorCalls[0].type).to.equal('async')
+    expect(onErrorCalls[0].err.message).to.equal('async hook test')
+  })
+
+  it('(hooks) onError — throwing hook does not suppress original error', async () => {
+    onErrorCalls.length = 0
+
+    await request(gateway)
+      .get('/users/on-error-throws/info')
+      .expect(500)
+
+    // onError was called despite throwing internally
+    expect(onErrorCalls).to.have.lengthOf(1)
+    expect(onErrorCalls[0].type).to.equal('throws')
+    // error still propagated to client (500 returned)
+  })
+
+  it('(hooks) onError — not called when no error occurs', async () => {
+    onErrorCalls.length = 0
+
+    await request(gateway)
+      .get('/users/info')
+      .expect(200)
+
+    expect(onErrorCalls).to.have.lengthOf(0)
   })
 
   it('(Connection: close) chunked transfer-encoding support', async () => {

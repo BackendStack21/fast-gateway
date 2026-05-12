@@ -176,7 +176,7 @@ const handler = (route, proxy, proxyHandler) => async (req, res, next) => {
     const { onError } = hooks
     if (typeof onError === 'function') {
       try {
-        onError(err, req, res)
+        await onError(err, req, res)
       } catch (_) {
         // onError hook failure must not suppress the original error
       }
