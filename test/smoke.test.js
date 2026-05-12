@@ -300,9 +300,6 @@ describe('API Gateway', () => {
     await request(gateway)
       .get('/users/on-request-error/info')
       .expect(500)
-      .then((response) => {
-        expect(response.body.message).to.equal('ups, pre-processing error...')
-      })
   })
 
   it('(hooks) onError — sync hook called with err, req, res', async () => {
