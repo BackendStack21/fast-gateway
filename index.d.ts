@@ -59,6 +59,7 @@ declare namespace fastgateway {
     onRequest?: Function
     rewriteHeaders?: Function
     onResponse?: Function
+    onError?: Function
     rewriteRequestHeaders?: Function
     request?: {
       timeout?: number

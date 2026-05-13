@@ -4,6 +4,8 @@
 
 const pump = require('pump')
 
+const onErrorCalls = []
+
 module.exports = async () => {
   return {
     timeout: 1.5 * 1000,
@@ -74,6 +76,43 @@ module.exports = async () => {
         hooks: {
           async onRequest (req, res) {
             throw new Error('ups, pre-processing error...')
+          }
+        }
+      },
+      {
+        prefix: '/users/on-error-sync',
+        target: 'http://localhost:3000',
+        hooks: {
+          async onRequest (req, res) {
+            throw new Error('sync hook test')
+          },
+          onError (err, req, res) {
+            onErrorCalls.push({ type: 'sync', err, url: req.url })
+          }
+        }
+      },
+      {
+        prefix: '/users/on-error-async',
+        target: 'http://localhost:3000',
+        hooks: {
+          async onRequest (req, res) {
+            throw new Error('async hook test')
+          },
+          async onError (err, req, res) {
+            onErrorCalls.push({ type: 'async', err, url: req.url })
+          }
+        }
+      },
+      {
+        prefix: '/users/on-error-throws',
+        target: 'http://localhost:3000',
+        hooks: {
+          async onRequest (req, res) {
+            throw new Error('throwing hook test')
+          },
+          onError (err, req, res) {
+            onErrorCalls.push({ type: 'throws', err, url: req.url })
+            throw new Error('onError itself threw')
           }
         }
       },
@@ -165,3 +204,5 @@ module.exports = async () => {
     ]
   }
 }
+
+module.exports.onErrorCalls = onErrorCalls

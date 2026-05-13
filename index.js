@@ -173,6 +173,15 @@ const handler = (route, proxy, proxyHandler) => async (req, res, next) => {
       proxyHandler(req, res, req.url, proxy, proxyOpts)
     }
   } catch (err) {
+    const { onError } = hooks
+    if (typeof onError === 'function') {
+      try {
+        await onError(err, req, res)
+      } catch (_) {
+        // onError hook failure must not suppress the original error
+      }
+    }
+
     return next(err)
   }
 }
