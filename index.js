@@ -6,7 +6,7 @@ const defaultProxyFactory = require('./lib/proxy-factory')
 const restana = require('restana')
 const defaultProxyHandler = (req, res, url, proxy, proxyOpts) =>
   proxy(req, res, url, proxyOpts)
-const DEFAULT_METHODS = require('restana/libs/methods').filter(
+const DEFAULT_METHODS = require('restana/libs/methods').BASE.filter(
   (method) => method !== 'all'
 )
 const NOOP = (req, res) => {}
