@@ -31,6 +31,13 @@ describe('API Gateway', () => {
       res.write('1')
       res.end()
     })
+    remote.get('/large-chunked', (req, res) => {
+      // Sends a 2MB chunked response to test buffer overflow protection
+      const buf = Buffer.alloc(2 * 1024 * 1024, 'x')
+      res.writeHead(200, { 'content-type': 'application/octet-stream' })
+      res.write(buf)
+      res.end()
+    })
     remote.get('/cache', (req, res) => {
       res.setHeader('x-cache-timeout', '1 second')
       res.send({
@@ -367,6 +374,20 @@ describe('API Gateway', () => {
       .then((res) => {
         expect(res.text).to.equal('user1')
       })
+  })
+
+  it('large chunked rejected with 502 when Connection close (buffer limit)', async () => {
+    await request(gateway)
+      .get('/users/large-chunked')
+      .set({ Connection: 'close' })
+      .expect(502)
+  })
+
+  it('large chunked streamed normally when Connection keep-alive', async () => {
+    await request(gateway)
+      .get('/users/large-chunked')
+      .set('Connection', 'keep-alive')
+      .expect(200)
   })
 
   it('(Should overwrite query string using req.query) GET /qs - 200', async () => {
