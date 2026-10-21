@@ -73,6 +73,16 @@ describe('routing', () => {
             }
           },
           {
+            prefix: '/partial-response',
+            target,
+            proxyHandler: (req, res) => {
+              res.writeHead(200)
+              res.write('partial')
+
+              throw new Error('failed after the response started')
+            }
+          },
+          {
             prefix: '/async-proxy-handler',
             target,
             proxyHandler: async () => {
@@ -113,6 +123,13 @@ describe('routing', () => {
       expect(onErrorCalls).to.have.lengthOf(1)
       expect(onErrorCalls[0].message).to.equal('proxy handler failed')
     })
+
+    it('terminates a partially sent response when the handler fails', async () => {
+      // resolves once the gateway closes the connection, rejects if it hangs
+      const response = await rawRequest(9502, '/partial-response/info', { timeout: 1000 })
+
+      expect(response.body).to.not.match(/0\r\n\r\n$/)
+    })
   })
 
   describe('url rewriting', () => {
@@ -124,6 +141,7 @@ describe('routing', () => {
           { prefix: '/public', prefixRewrite: '/api/public', target },
           { prefix: '/users', target },
           { prefix: '/internal', prefixRewrite: '/v$&', target },
+          { prefix: '/slash', prefixRewrite: '/v2/', target },
           { prefix: '/', target }
         ]
       }, 9503)
@@ -142,7 +160,8 @@ describe('routing', () => {
       '/public/../../admin/users',
       '/public/%2e%2e/%2e%2e/admin/users',
       '/public/.%2E/admin/users',
-      '/public/..\\..\\admin/users'
+      '/public/..\\..\\admin/users',
+      '/public/..;/..;/admin/users'
     ]) {
       it(`rejects dot-segment traversal: ${path}`, async () => {
         const response = await rawRequest(9503, path)
@@ -174,6 +193,15 @@ describe('routing', () => {
         .expect(200)
         .then((response) => {
           expect(response.body.url).to.equal('/v$&/info')
+        })
+    })
+
+    it('prefixRewrite ending with "/" does not produce a double slash', async () => {
+      await request(gateway)
+        .get('/slash/users')
+        .expect(200)
+        .then((response) => {
+          expect(response.body.url).to.equal('/v2/users')
         })
     })
 
@@ -346,6 +374,36 @@ describe('routing', () => {
       expect(() => fastGateway({
         routes: [{ prefix: '/legacy', proxyType: 'http-legacy', target }]
       })).to.not.throw(/Unsupported proxy type/)
+    })
+
+    it('passes req.query unchanged to non "http" proxy types', async () => {
+      const gateway = await start({
+        proxyFactory: () => () => {},
+        routes: [
+          {
+            prefix: '/legacy',
+            proxyType: 'http-legacy',
+            target,
+            proxyHandler: (req, res, url, proxy, proxyOpts) => {
+              res.setHeader('content-type', 'application/json')
+              res.end(JSON.stringify({
+                isURLSearchParams: proxyOpts.queryString instanceof URLSearchParams,
+                queryString: proxyOpts.queryString
+              }))
+            }
+          }
+        ]
+      }, 9512)
+
+      await request(gateway)
+        .get('/legacy/items?a=1&a=2&b=3')
+        .expect(200)
+        .then((response) => {
+          expect(response.body).to.deep.equal({
+            isURLSearchParams: false,
+            queryString: { a: ['1', '2'], b: '3' }
+          })
+        })
     })
 
     it('services.json describes RegExp prefixes', async () => {

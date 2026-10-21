@@ -11,6 +11,7 @@ const crypto = require('crypto')
 const GW_PORT = 9300
 const UPSTREAM_PORT = 9301
 const SHARED_GW_PORT = 9302
+const CONFIG_GW_PORT = 9303
 const DEAD_PORT = 9399
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -180,6 +181,39 @@ describe('ws-proxy regressions', function () {
 
     expect(reply, 'message lost').to.not.equal(undefined)
     expect(reply.data).to.equal('first')
+  })
+
+  it('bounds the messages queued while an async onOpen hook is pending', async () => {
+    const before = state.upgrades
+    const ws = new WebSocket.Client(`ws://127.0.0.1:${GW_PORT}/slow`)
+    ws.on('open', () => {
+      for (let i = 0; i < 3; i++) ws.send(Buffer.alloc(512 * 1024))
+    })
+    const closed = await Promise.race([nextClose(ws), sleep(1000)])
+
+    expect(closed, 'client socket left open').to.not.equal(undefined)
+    expect(closed.code).to.equal(4413)
+    await sleep(200)
+    expect(state.upgrades).to.equal(before)
+  })
+
+  it('does not mutate websocket route configs', async () => {
+    const route = { proxyType: 'websocket', prefix: '/echo', target: `ws://127.0.0.1:${UPSTREAM_PORT}` }
+    const configGw = gateway({ routes: [route] })
+    const configGwSockets = trackSockets(configGw.getServer())
+    await configGw.start(CONFIG_GW_PORT)
+
+    const ws = new WebSocket.Client(`ws://127.0.0.1:${CONFIG_GW_PORT}/echo`)
+    await new Promise((resolve) => ws.on('open', resolve))
+    ws.close()
+    await nextClose(ws)
+    await closeServer(configGw.getServer(), configGwSockets)
+
+    expect(route).to.deep.equal({
+      proxyType: 'websocket',
+      prefix: '/echo',
+      target: `ws://127.0.0.1:${UPSTREAM_PORT}`
+    })
   })
 
   it('does not open an upstream connection when the client left during onOpen', async () => {

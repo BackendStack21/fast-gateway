@@ -13,7 +13,8 @@ const NOOP = (req, res) => {}
 const PROXY_TYPES = ['http', 'http-legacy', 'lambda']
 const registerWebSocketRoutes = require('./lib/ws-proxy')
 // "." and ".." path segments, also percent-encoded or backslash separated
-const DOT_SEGMENT_REGEX = /(?:^|[/\\])(?:\.|%2e){1,2}(?:[/\\]|$)/i
+// (a ";" path parameter is ignored by some upstreams, e.g. "/..;/")
+const DOT_SEGMENT_REGEX = /(?:^|[/\\])(?:\.|%2e){1,2}(?:;[^/\\]*)?(?:[/\\]|$)/i
 
 const gateway = (opts) => {
   let proxyFactory
@@ -167,13 +168,24 @@ const hasDotSegment = (url) => {
 }
 
 // routes are matched case-insensitively, so the prefix is stripped the same way
-const stripPrefix = (url, prefix, prefixRewrite) =>
-  url.slice(0, prefix.length).toLowerCase() === prefix.toLowerCase()
-    ? prefixRewrite + url.slice(prefix.length)
-    : url
+const stripPrefix = (url, prefix, prefixRewrite) => {
+  if (url.slice(0, prefix.length).toLowerCase() !== prefix.toLowerCase()) {
+    return url
+  }
 
-// URLSearchParams(object) would join repeated parameters (arrays) with commas
-const toQueryString = (query) => {
+  // avoid a double slash when prefixRewrite ends with "/", e.g. '/api/'
+  const rest = url.slice(prefix.length)
+
+  return prefixRewrite.endsWith('/') && rest.startsWith('/')
+    ? prefixRewrite + rest.slice(1)
+    : prefixRewrite + rest
+}
+
+// URLSearchParams(object) would join repeated parameters (arrays) with commas,
+// only fast-proxy-lite ('http') stringifies queryString using URLSearchParams
+const toQueryString = (query, proxyType) => {
+  if (proxyType !== 'http') return query
+
   for (const name in query) {
     if (Array.isArray(query[name])) {
       const params = new URLSearchParams()
@@ -189,8 +201,14 @@ const toQueryString = (query) => {
 }
 
 const handler = (route, prefix, proxy, proxyHandler) => async (req, res, next) => {
-  const { urlRewrite, prefixRewrite, hooks, timeout, disableQsOverwrite } =
-    route
+  const {
+    urlRewrite,
+    prefixRewrite,
+    hooks,
+    timeout,
+    disableQsOverwrite,
+    proxyType = 'http'
+  } = route
   const { onRequest } = hooks
 
   try {
@@ -217,7 +235,7 @@ const handler = (route, prefix, proxy, proxyHandler) => async (req, res, next) =
     if (!shouldAbortProxy) {
       const proxyOpts = Object.assign(
         {
-          queryString: disableQsOverwrite ? null : toQueryString(req.query)
+          queryString: disableQsOverwrite ? null : toQueryString(req.query, proxyType)
         },
         hooks,
         {
@@ -242,6 +260,11 @@ const handler = (route, prefix, proxy, proxyHandler) => async (req, res, next) =
     // the onError hook may have already sent a response
     if (!res.headersSent) {
       return next(err)
+    }
+
+    // a partially sent response can't be turned into an error response
+    if (typeof onError !== 'function' && !res.writableEnded) {
+      res.destroy(err)
     }
   }
 }
