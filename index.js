@@ -10,8 +10,10 @@ const DEFAULT_METHODS = require('restana/libs/methods').BASE.filter(
   (method) => method !== 'all'
 )
 const NOOP = (req, res) => {}
-const PROXY_TYPES = ['http', 'lambda']
+const PROXY_TYPES = ['http', 'http-legacy', 'lambda']
 const registerWebSocketRoutes = require('./lib/ws-proxy')
+// "." and ".." path segments, also percent-encoded or backslash separated
+const DOT_SEGMENT_REGEX = /(?:^|[/\\])(?:\.|%2e){1,2}(?:[/\\]|$)/i
 
 const gateway = (opts) => {
   let proxyFactory
@@ -43,7 +45,8 @@ const gateway = (opts) => {
 
   // registering services.json
   const services = opts.routes.map((route) => ({
-    prefix: route.prefix,
+    prefix:
+      route.prefix instanceof RegExp ? route.prefix.toString() : route.prefix,
     docs: route.docs
   }))
   if (opts.enableServicesEndpoint) {
@@ -74,7 +77,10 @@ const gateway = (opts) => {
   // processing non-websocket routes
   opts.routes
     .filter((route) => route.proxyType !== 'websocket')
-    .forEach((route) => {
+    .forEach((routeConfig) => {
+      // route configs can be shared between routes or gateways, don't mutate them
+      const route = Object.assign({}, routeConfig)
+
       if (undefined === route.prefixRewrite) {
         route.prefixRewrite = ''
       }
@@ -90,14 +96,18 @@ const gateway = (opts) => {
 
       // retrieve default hooks for proxy
       const hooksForDefaultType = isDefaultProxyType
-        ? require('./lib/default-hooks')[proxyType]
+        ? require('./lib/default-hooks')[
+          proxyType === 'http-legacy' ? 'http' : proxyType
+        ]
         : {}
       const { onRequestNoOp = NOOP, onResponse = NOOP } = hooksForDefaultType
 
       // populating required NOOPS
-      route.hooks = route.hooks || {}
-      route.hooks.onRequest = route.hooks.onRequest || onRequestNoOp
-      route.hooks.onResponse = route.hooks.onResponse || onResponse
+      const hooks = route.hooks || {}
+      route.hooks = Object.assign({}, hooks, {
+        onRequest: hooks.onRequest || onRequestNoOp,
+        onResponse: hooks.onResponse || onResponse
+      })
 
       // populating route middlewares
       route.middlewares = route.middlewares || []
@@ -112,21 +122,29 @@ const gateway = (opts) => {
       // route proxy handler function
       const proxyHandler = route.proxyHandler || defaultProxyHandler
 
-      // populating timeout config
-      route.timeout = route.timeout || opts.timeout
+      // populating timeout config, 0 disables the timeout
+      route.timeout = route.timeout ?? opts.timeout
+
+      // avoid a double slash between prefix and pathRegex, e.g. prefix: '/'
+      let prefix = route.prefix
+      if (
+        typeof prefix === 'string' &&
+        prefix.endsWith('/') &&
+        route.pathRegex.startsWith('/')
+      ) {
+        prefix = prefix.slice(0, -1)
+      }
 
       // registering route handlers
       const methods = route.methods || DEFAULT_METHODS
 
       const args = [
         // path
-        route.prefix instanceof RegExp
-          ? route.prefix
-          : route.prefix + route.pathRegex,
+        prefix instanceof RegExp ? prefix : prefix + route.pathRegex,
         // route middlewares
         ...route.middlewares,
         // route handler
-        handler(route, proxy, proxyHandler)
+        handler(route, prefix, proxy, proxyHandler)
       ]
 
       methods.forEach((method) => {
@@ -140,37 +158,76 @@ const gateway = (opts) => {
   return router
 }
 
-const handler = (route, proxy, proxyHandler) => async (req, res, next) => {
-  const {
-    urlRewrite,
-    prefix,
-    prefixRewrite,
-    hooks,
-    timeout,
-    disableQsOverwrite
-  } = route
+const hasDotSegment = (url) => {
+  const queryIndex = url.indexOf('?')
+
+  return DOT_SEGMENT_REGEX.test(
+    queryIndex === -1 ? url : url.slice(0, queryIndex)
+  )
+}
+
+// routes are matched case-insensitively, so the prefix is stripped the same way
+const stripPrefix = (url, prefix, prefixRewrite) =>
+  url.slice(0, prefix.length).toLowerCase() === prefix.toLowerCase()
+    ? prefixRewrite + url.slice(prefix.length)
+    : url
+
+// URLSearchParams(object) would join repeated parameters (arrays) with commas
+const toQueryString = (query) => {
+  for (const name in query) {
+    if (Array.isArray(query[name])) {
+      const params = new URLSearchParams()
+      for (const key in query) {
+        [].concat(query[key]).forEach((value) => params.append(key, value))
+      }
+
+      return params
+    }
+  }
+
+  return query
+}
+
+const handler = (route, prefix, proxy, proxyHandler) => async (req, res, next) => {
+  const { urlRewrite, prefixRewrite, hooks, timeout, disableQsOverwrite } =
+    route
   const { onRequest } = hooks
 
   try {
+    // the upstream would resolve dot segments, escaping the route prefix
+    if (hasDotSegment(req.url)) {
+      res.statusCode = 400
+      res.end('Bad Request')
+
+      return
+    }
+
     if (typeof urlRewrite === 'function') {
       req.url = urlRewrite(req)
     } else if (typeof prefix === 'string') {
-      req.url = req.url.replace(prefix, prefixRewrite)
+      req.url = stripPrefix(req.url, prefix, prefixRewrite)
+    }
+
+    // restana shares a frozen empty req.query when there is no query string
+    if (req.query && Object.isFrozen(req.query)) {
+      req.query = Object.create(null)
     }
 
     const shouldAbortProxy = await onRequest(req, res)
     if (!shouldAbortProxy) {
       const proxyOpts = Object.assign(
         {
-          request: {
-            timeout: req.timeout || timeout
-          },
-          queryString: disableQsOverwrite ? null : req.query
+          queryString: disableQsOverwrite ? null : toQueryString(req.query)
         },
-        route.hooks
+        hooks,
+        {
+          request: Object.assign({}, hooks.request, {
+            timeout: req.timeout ?? hooks.request?.timeout ?? timeout
+          })
+        }
       )
 
-      proxyHandler(req, res, req.url, proxy, proxyOpts)
+      await proxyHandler(req, res, req.url, proxy, proxyOpts)
     }
   } catch (err) {
     const { onError } = hooks
@@ -182,7 +239,10 @@ const handler = (route, proxy, proxyHandler) => async (req, res, next) => {
       }
     }
 
-    return next(err)
+    // the onError hook may have already sent a response
+    if (!res.headersSent) {
+      return next(err)
+    }
   }
 }
 
