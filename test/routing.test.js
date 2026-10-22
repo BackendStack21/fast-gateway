@@ -31,7 +31,11 @@ describe('routing', () => {
       const reply = () => {
         res.setHeader('content-type', 'application/json')
         // the gateway always appends '?' when forwarding req.query, ignore it
-        res.end(JSON.stringify({ method: req.method, url: req.url.replace(/\?$/, '') }))
+        res.end(JSON.stringify({
+          method: req.method,
+          url: req.url.replace(/\?$/, ''),
+          rawUrl: req.url
+        }))
       }
       if (req.url.startsWith('/slow')) {
         setTimeout(reply, 300)
@@ -83,6 +87,21 @@ describe('routing', () => {
             }
           },
           {
+            prefix: '/partial-response-on-error',
+            target,
+            proxyHandler: (req, res) => {
+              res.writeHead(200)
+              res.write('partial')
+
+              throw new Error('failed after the response started')
+            },
+            hooks: {
+              onError (err) {
+                onErrorCalls.push(err)
+              }
+            }
+          },
+          {
             prefix: '/async-proxy-handler',
             target,
             proxyHandler: async () => {
@@ -130,6 +149,14 @@ describe('routing', () => {
 
       expect(response.body).to.not.match(/0\r\n\r\n$/)
     })
+
+    it('terminates a partially sent response when onError does not respond', async () => {
+      onErrorCalls.length = 0
+      const response = await rawRequest(9502, '/partial-response-on-error/info', { timeout: 1000 })
+
+      expect(response.body).to.not.match(/0\r\n\r\n$/)
+      expect(onErrorCalls).to.have.lengthOf(1)
+    })
   })
 
   describe('url rewriting', () => {
@@ -161,7 +188,9 @@ describe('routing', () => {
       '/public/%2e%2e/%2e%2e/admin/users',
       '/public/.%2E/admin/users',
       '/public/..\\..\\admin/users',
-      '/public/..;/..;/admin/users'
+      '/public/..;/..;/admin/users',
+      '/public/..%2f..%2fadmin/users',
+      '/public/%2e%2e%5C%2e%2e%5Cadmin/users'
     ]) {
       it(`rejects dot-segment traversal: ${path}`, async () => {
         const response = await rawRequest(9503, path)
@@ -242,6 +271,25 @@ describe('routing', () => {
         routes: [
           { prefix: '/svc', target },
           {
+            prefix: '/strip-token',
+            target,
+            hooks: {
+              onRequest (req) {
+                delete req.query.token
+              }
+            }
+          },
+          {
+            prefix: '/inspect',
+            target,
+            proxyHandler: (req, res, url, proxy, proxyOpts) => {
+              res.setHeader('x-page', proxyOpts.queryString.page)
+              res.setHeader('x-query', JSON.stringify({ ...proxyOpts.queryString }))
+
+              return proxy(req, res, url, proxyOpts)
+            }
+          },
+          {
             prefix: '/set-query',
             target,
             hooks: {
@@ -260,6 +308,35 @@ describe('routing', () => {
         .expect(200)
         .then((response) => {
           expect(response.body.url).to.equal('/items?a=1&a=2&b=3')
+        })
+    })
+
+    it('does not append "?" when there is no query string', async () => {
+      await request(gateway)
+        .get('/svc/items')
+        .expect(200)
+        .then((response) => {
+          expect(response.body.rawUrl).to.equal('/items')
+        })
+    })
+
+    it('does not forward query parameters removed in onRequest', async () => {
+      await request(gateway)
+        .get('/strip-token/items?token=secret')
+        .expect(200)
+        .then((response) => {
+          expect(response.body.rawUrl).to.not.include('token')
+        })
+    })
+
+    it('proxyOpts.queryString stays a plain object with repeated parameters', async () => {
+      await request(gateway)
+        .get('/inspect/items?tag=a&tag=b&page=2')
+        .expect(200)
+        .then((response) => {
+          expect(response.headers['x-page']).to.equal('2')
+          expect(JSON.parse(response.headers['x-query'])).to.deep.equal({ tag: ['a', 'b'], page: '2' })
+          expect(response.body.url).to.equal('/items?tag=a&tag=b&page=2')
         })
     })
 
@@ -404,6 +481,13 @@ describe('routing', () => {
             queryString: { a: ['1', '2'], b: '3' }
           })
         })
+    })
+
+    it('does not crash on a non-string pathRegex', () => {
+      expect(() => fastGateway({
+        pathRegex: undefined,
+        routes: [{ prefix: '/api/', target }]
+      })).to.not.throw()
     })
 
     it('services.json describes RegExp prefixes', async () => {

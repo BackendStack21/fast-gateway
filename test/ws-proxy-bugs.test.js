@@ -12,6 +12,7 @@ const GW_PORT = 9300
 const UPSTREAM_PORT = 9301
 const SHARED_GW_PORT = 9302
 const CONFIG_GW_PORT = 9303
+const MULTI_LISTENER_GW_PORT = 9304
 const DEAD_PORT = 9399
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -82,6 +83,7 @@ describe('ws-proxy regressions', function () {
       const ws = new WebSocket(req, socket, body, ['graphql-ws', 'graphql-transport-ws'])
       ws.on('message', (event) => {
         if (event.data === 'kick') return ws.close(4001, 'kicked')
+        if (event.data === 'crash') return socket.destroy()
         ws.send(JSON.stringify({ data: event.data, url: req.url, protocol: ws.protocol }))
       })
       ws.on('close', (event) => state.closes.push({ code: event.code, reason: event.reason }))
@@ -110,6 +112,12 @@ describe('ws-proxy regressions', function () {
           prefix: '/long-reason',
           target,
           hooks: { onOpen: failingHook(4401, 'Unauthorized: ' + 'x'.repeat(200)) }
+        },
+        {
+          proxyType: 'websocket',
+          prefix: '/emoji-reason',
+          target,
+          hooks: { onOpen: failingHook(4401, 'a'.repeat(120) + '\u{1F600}') }
         },
         {
           proxyType: 'websocket',
@@ -171,6 +179,49 @@ describe('ws-proxy regressions', function () {
 
     expect(await waitFor(() => state.closes.length === 1)).to.equal(true)
     expect(state.closes[0]).to.deep.equal({ code: 4000, reason: 'bye' })
+  })
+
+  it('reports an abnormal upstream close to the client as abnormal', async () => {
+    const ws = new WebSocket.Client(`ws://127.0.0.1:${GW_PORT}/echo`)
+    ws.on('open', () => ws.send('crash'))
+    const event = await nextClose(ws)
+
+    expect(event.code).to.equal(1006)
+  })
+
+  it('truncates long close reasons on a character boundary', async () => {
+    const ws = new WebSocket.Client(`ws://127.0.0.1:${GW_PORT}/emoji-reason`)
+    const event = await nextClose(ws)
+
+    expect(event.code).to.equal(4401)
+    expect(event.reason).to.equal('a'.repeat(120))
+  })
+
+  it('ends upgrades no listener handles when the server has other upgrade listeners', async () => {
+    const multi = gateway({
+      enableServicesEndpoint: false,
+      routes: [{ proxyType: 'websocket', prefix: '/proxied', target: `ws://127.0.0.1:${UPSTREAM_PORT}` }]
+    })
+    const server = multi.getServer()
+    const sockets = trackSockets(server)
+    server.on('upgrade', () => {}) // e.g. another library ignoring paths it doesn't own
+    await multi.start(MULTI_LISTENER_GW_PORT)
+
+    try {
+      const socket = net.connect(MULTI_LISTENER_GW_PORT, '127.0.0.1', () => {
+        socket.write(`GET /unknown HTTP/1.1\r\nHost: 127.0.0.1:${MULTI_LISTENER_GW_PORT}\r\n${wsUpgradeHeaders()}\r\n`)
+      })
+      socket.on('error', () => {})
+      const closed = await Promise.race([
+        new Promise((resolve) => socket.on('close', () => resolve(true))),
+        sleep(2000)
+      ])
+      socket.destroy()
+
+      expect(closed, 'unhandled upgrade socket left open').to.equal(true)
+    } finally {
+      await closeServer(server, sockets)
+    }
   })
 
   it('does not lose messages sent while an async onOpen hook is pending', async () => {

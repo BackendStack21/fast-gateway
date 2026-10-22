@@ -12,9 +12,11 @@ const DEFAULT_METHODS = require('restana/libs/methods').BASE.filter(
 const NOOP = (req, res) => {}
 const PROXY_TYPES = ['http', 'http-legacy', 'lambda']
 const registerWebSocketRoutes = require('./lib/ws-proxy')
-// "." and ".." path segments, also percent-encoded or backslash separated
+// "." and ".." path segments, also percent-encoded or separated by a backslash
+// or an encoded (back)slash, some upstreams decode those before normalizing
 // (a ";" path parameter is ignored by some upstreams, e.g. "/..;/")
-const DOT_SEGMENT_REGEX = /(?:^|[/\\])(?:\.|%2e){1,2}(?:;[^/\\]*)?(?:[/\\]|$)/i
+const DOT_SEGMENT_REGEX =
+  /(?:^|[/\\]|%2f|%5c)(?:\.|%2e){1,2}(?:;[^/\\]*)?(?:[/\\]|%2f|%5c|$)/i
 
 const gateway = (opts) => {
   let proxyFactory
@@ -97,9 +99,7 @@ const gateway = (opts) => {
 
       // retrieve default hooks for proxy
       const hooksForDefaultType = isDefaultProxyType
-        ? require('./lib/default-hooks')[
-          proxyType === 'http-legacy' ? 'http' : proxyType
-        ]
+        ? require('./lib/default-hooks')[proxyType]
         : {}
       const { onRequestNoOp = NOOP, onResponse = NOOP } = hooksForDefaultType
 
@@ -131,6 +131,7 @@ const gateway = (opts) => {
       if (
         typeof prefix === 'string' &&
         prefix.endsWith('/') &&
+        typeof route.pathRegex === 'string' &&
         route.pathRegex.startsWith('/')
       ) {
         prefix = prefix.slice(0, -1)
@@ -181,23 +182,28 @@ const stripPrefix = (url, prefix, prefixRewrite) => {
     : prefixRewrite + rest
 }
 
-// URLSearchParams(object) would join repeated parameters (arrays) with commas,
-// only fast-proxy-lite ('http') stringifies queryString using URLSearchParams
-const toQueryString = (query, proxyType) => {
-  if (proxyType !== 'http') return query
-
-  for (const name in query) {
-    if (Array.isArray(query[name])) {
-      const params = new URLSearchParams()
-      for (const key in query) {
-        [].concat(query[key]).forEach((value) => params.append(key, value))
-      }
-
-      return params
-    }
+// URLSearchParams(object) joins repeated parameters (arrays) with commas,
+// iterating [name, value] pairs makes it append each value instead
+function * queryPairs () {
+  for (const name in this) {
+    for (const value of [].concat(this[name])) yield [name, value]
   }
+}
 
-  return query
+const toQueryString = (query, url) => {
+  if (!query) return query
+
+  const values = Object.values(query)
+  // nothing to forward, avoids a trailing "?" in the upstream url
+  if (values.length === 0 && !url.includes('?')) return null
+  if (!values.some(Array.isArray)) return query
+
+  // still a plain object for hooks and custom proxy handlers
+  return Object.defineProperty(
+    Object.assign(Object.create(null), query),
+    Symbol.iterator,
+    { value: queryPairs }
+  )
 }
 
 const handler = (route, prefix, proxy, proxyHandler) => async (req, res, next) => {
@@ -206,8 +212,7 @@ const handler = (route, prefix, proxy, proxyHandler) => async (req, res, next) =
     prefixRewrite,
     hooks,
     timeout,
-    disableQsOverwrite,
-    proxyType = 'http'
+    disableQsOverwrite
   } = route
   const { onRequest } = hooks
 
@@ -235,7 +240,9 @@ const handler = (route, prefix, proxy, proxyHandler) => async (req, res, next) =
     if (!shouldAbortProxy) {
       const proxyOpts = Object.assign(
         {
-          queryString: disableQsOverwrite ? null : toQueryString(req.query, proxyType)
+          queryString: disableQsOverwrite
+            ? null
+            : toQueryString(req.query, req.url)
         },
         hooks,
         {
@@ -248,6 +255,7 @@ const handler = (route, prefix, proxy, proxyHandler) => async (req, res, next) =
       await proxyHandler(req, res, req.url, proxy, proxyOpts)
     }
   } catch (err) {
+    const headersSent = res.headersSent
     const { onError } = hooks
     if (typeof onError === 'function') {
       try {
@@ -257,14 +265,12 @@ const handler = (route, prefix, proxy, proxyHandler) => async (req, res, next) =
       }
     }
 
-    // the onError hook may have already sent a response
-    if (!res.headersSent) {
+    if (headersSent) {
+      // a partially sent response can't be turned into an error response
+      if (!res.writableEnded) res.destroy()
+    } else if (!res.headersSent) {
+      // otherwise the onError hook already sent a response
       return next(err)
-    }
-
-    // a partially sent response can't be turned into an error response
-    if (typeof onError !== 'function' && !res.writableEnded) {
-      res.destroy(err)
     }
   }
 }
