@@ -20,6 +20,7 @@ Read more online:
 ```js
 npm i fast-gateway
 ```
+> Requires Node.js 24 or newer. Upgrading from v5.x? See the [breaking changes](https://fgw.21no.de/#/?id=v6x).
 
 ## Usage 
 ### Gateway

@@ -25,6 +25,8 @@ Read more online:
 npm i fast-gateway
 ```
 
+> Requires Node.js 24 or newer. Upgrading from v5.x? See the v6.x Breaking Changes below.
+
 # Usage
 
 Next we describe two examples proxying HTTP and Lambda downstream services.
@@ -120,6 +122,7 @@ module.exports.handler = serverless(service)
   server,
   // Optional restana library configuration (https://www.npmjs.com/package/restana#configuration)
   // Please note that if "server" is provided, this settings are ignored.
+  // Routes are matched case-sensitively, use { caseSensitive: false } to match them case-insensitively.
   restana: {},
   // Optional global middlewares in the format: (req, res, next) => next()
   // Default value: []
@@ -175,7 +178,7 @@ module.exports.handler = serverless(service)
       endpoint: '/api-docs',
       type: 'swagger'
     },
-    // Optional "prefix rewrite" before request is forwarded. Default value: ''
+    // Optional "prefix rewrite" before request is forwarded, used literally. Default value: ''
     prefixRewrite: '',
     // Optional "url rewrite" hook. If defined, the prefixRewrite setting is ignored.
     urlRewrite: (req) => req.url,
@@ -540,6 +543,40 @@ You can support the maintenance of this project:
 - [TRON](https://www.binance.com/en/buy-TRON) Wallet: `TJ5Bbf9v4kpptnRsePXYDvnYcYrS5Tyxus`
 
 # Breaking Changes
+
+## v6.x
+
+**Runtime**
+
+- Node.js 24 or newer is required.
+- [restana 7](https://github.com/BackendStack21/restana/blob/master/MIGRATION.md) is the default HTTP framework. Its trie router matches paths **case-sensitively**: `GET /Users` no longer matches a route with `prefix: '/users'`. Set `restana: { caseSensitive: false }` to keep the previous behavior.
+- Errors handled by restana's default `errorHandler` respond with the standard status text, e.g. `{"code":404,"message":"Not Found"}` instead of `"Internal Server Error"`.
+
+**Routing**
+
+- Requests whose path contains `.` or `..` segments get a `400` response. This includes encoded (`%2e`, `%2f`, `%5c`), backslash and `;` parameter forms such as `/..;/`.
+- The prefix is only stripped from the start of the URL.
+- `prefixRewrite` is used literally, so `$&` and other replacement patterns are no longer expanded.
+- `prefix: '/'` works as a catch-all route, and prefixes ending in `/` match nested paths. A `prefixRewrite` ending in `/` no longer produces `//`.
+
+**Proxying**
+
+- Chunked `Connection: close` responses over 1MB are streamed instead of rejected with `502`.
+- A route's `timeout: 0` disables the global timeout. `hooks.request` is merged with the timeout instead of replacing it, and `req.timeout` takes precedence over `hooks.request.timeout`.
+- Repeated query parameters (`?a=1&a=2`) are forwarded as-is. No trailing `?` is appended when there is no query string, and `proxyOpts.queryString` is then `null`.
+- The routes and hooks passed to `gateway()` are no longer modified, so they can be shared between routes and gateways.
+- If `onError` sends a response, `next(err)` is skipped. A response already partly sent when the error happened is destroyed.
+
+**Hostnames hook**
+
+- Hostnames are matched case-insensitively. Matchers are compiled when the hook is created, so later changes to the `hostname2prefix` array are not picked up.
+
+**WebSockets**
+
+- Close codes and reasons are relayed in both directions. When the upstream closes with a code that can't be relayed (1001, 1006, 1011), the client connection is dropped.
+- Only the subprotocol agreed with the client is offered upstream, and the query string is forwarded unchanged.
+- Messages sent while an async `onOpen` hook runs are queued and forwarded. Past 1MB of queued data, the client is closed with code `4413`.
+- Upgrade requests that aren't WebSocket, or match no route, are ended.
 
 ## v3.x
 

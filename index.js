@@ -6,9 +6,8 @@ const defaultProxyFactory = require('./lib/proxy-factory')
 const restana = require('restana')
 const defaultProxyHandler = (req, res, url, proxy, proxyOpts) =>
   proxy(req, res, url, proxyOpts)
-const DEFAULT_METHODS = require('restana/libs/methods').BASE.filter(
-  (method) => method !== 'all'
-)
+// restana's base HTTP methods, without "all"
+const DEFAULT_METHODS = ['get', 'delete', 'patch', 'post', 'put', 'head', 'options']
 const NOOP = (req, res) => {}
 const PROXY_TYPES = ['http', 'http-legacy', 'lambda']
 const registerWebSocketRoutes = require('./lib/ws-proxy')
@@ -168,7 +167,8 @@ const hasDotSegment = (url) => {
   )
 }
 
-// routes are matched case-insensitively, so the prefix is stripped the same way
+// routes can be matched case-insensitively (e.g. restana's caseSensitive: false),
+// so the prefix is stripped the same way
 const stripPrefix = (url, prefix, prefixRewrite) => {
   if (url.slice(0, prefix.length).toLowerCase() !== prefix.toLowerCase()) {
     return url

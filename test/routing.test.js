@@ -222,18 +222,19 @@ describe('routing', () => {
       })
     }
 
-    it('strips the prefix case-insensitively, matching how routes are matched', async () => {
+    it('matches prefixes case-sensitively by default', async () => {
+      // "/Users" does not match the "/users" route, the "/" catch-all handles it
       await request(gateway)
         .get('/Users/42')
         .expect(200)
         .then((response) => {
-          expect(response.body.url).to.equal('/42')
+          expect(response.body.url).to.equal('/Users/42')
         })
     })
 
     it('only strips the prefix from the beginning of the url', async () => {
       await request(gateway)
-        .get('/USERS/a/users/b')
+        .get('/users/a/users/b')
         .expect(200)
         .then((response) => {
           expect(response.body.url).to.equal('/a/users/b')
@@ -273,6 +274,35 @@ describe('routing', () => {
         .expect(200)
         .then((response) => {
           expect(response.body.url).to.equal('/foo/bar')
+        })
+    })
+  })
+
+  describe('case-insensitive routing', () => {
+    let gateway
+
+    before(async () => {
+      gateway = await start({
+        restana: { caseSensitive: false },
+        routes: [{ prefix: '/users', target }]
+      }, 9516)
+    })
+
+    it('strips the prefix case-insensitively, matching how routes are matched', async () => {
+      await request(gateway)
+        .get('/Users/42')
+        .expect(200)
+        .then((response) => {
+          expect(response.body.url).to.equal('/42')
+        })
+    })
+
+    it('only strips the prefix from the beginning of the url', async () => {
+      await request(gateway)
+        .get('/USERS/a/users/b')
+        .expect(200)
+        .then((response) => {
+          expect(response.body.url).to.equal('/a/users/b')
         })
     })
   })
