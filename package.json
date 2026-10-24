@@ -1,6 +1,6 @@
 {
   "name": "fast-gateway",
-  "version": "5.0.1",
+  "version": "6.0.0",
   "description": "A Node.js API Gateway for the masses!",
   "main": "index.js",
   "types": "index.d.ts",
