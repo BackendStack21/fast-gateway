@@ -10,6 +10,13 @@
     "lint": "npx standard",
     "ws-bench": "npx artillery run benchmark/websocket/artillery-perf1.yml"
   },
+  "nyc": {
+    "check-coverage": true,
+    "branches": 99,
+    "functions": 99,
+    "lines": 99,
+    "statements": 99
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jkyberneees/fast-gateway.git"

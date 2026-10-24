@@ -4,11 +4,14 @@
 const expect = require('chai').expect
 const request = require('supertest')
 const http = require('http')
+const net = require('net')
 const fastGateway = require('../index')
+const defaultHooks = require('../lib/default-hooks')
 const rawRequest = require('./raw-http')
 
 const UPSTREAM_PORT = 9551
 const GATEWAY_PORT = 9552
+const RAW_UPSTREAM_PORT = 9553
 
 const binaryParser = (res, cb) => {
   const chunks = []
@@ -16,20 +19,20 @@ const binaryParser = (res, cb) => {
   res.on('end', () => cb(null, Buffer.concat(chunks)))
 }
 
-const lambdaRoute = (prefix, payload) => ({
+const lambdaRoute = (prefix, payload, response = { StatusCode: 200 }) => ({
   prefix,
   proxyType: 'lambda',
   target: 'a-lambda-function',
   proxyConfig: {
     lambdaProxy: (params, cb) => setImmediate(() => cb(null, {
-      StatusCode: 200,
+      ...response,
       Payload: JSON.stringify(payload)
     }))
   }
 })
 
 describe('default hooks', () => {
-  let gateway, upstream
+  let gateway, upstream, rawUpstream
   const upstreamClosed = []
   const pending = []
 
@@ -54,9 +57,20 @@ describe('default hooks', () => {
     })
     await new Promise((resolve) => upstream.listen(UPSTREAM_PORT, resolve))
 
+    // writes a response node's http server can't produce
+    rawUpstream = net.createServer((socket) => {
+      socket.once('data', () => {
+        socket.end('HTTP/1.1 200 OK\r\nTransfer-Encoding: gzip, chunked\r\n\r\n5\r\nhello\r\n0\r\n\r\n')
+      })
+    })
+    await new Promise((resolve) => rawUpstream.listen(RAW_UPSTREAM_PORT, resolve))
+
     gateway = fastGateway({
       routes: [
         { prefix: '/http', target: `http://127.0.0.1:${UPSTREAM_PORT}` },
+        { prefix: '/raw', target: `http://127.0.0.1:${RAW_UPSTREAM_PORT}` },
+        lambdaRoute('/lambda-no-status', { body: 'no status' }, {}),
+        lambdaRoute('/lambda-no-body', { statusCode: 204 }),
         lambdaRoute('/lambda-no-status-code', { body: 'hello' }),
         lambdaRoute('/lambda-object-body', { statusCode: 201, body: { name: 'fast-gateway' } }),
         lambdaRoute('/lambda-base64', {
@@ -75,6 +89,7 @@ describe('default hooks', () => {
     await gateway.close()
     upstream.closeAllConnections()
     await new Promise((resolve) => upstream.close(resolve))
+    await new Promise((resolve) => rawUpstream.close(resolve))
   })
 
   describe('http', () => {
@@ -108,6 +123,15 @@ describe('default hooks', () => {
       expect(upstreamClosed).to.deep.equal(['/endless'])
     })
 
+    it('(Connection: close) buffered response does not mix transfer-encoding and content-length', async () => {
+      const response = await rawRequest(GATEWAY_PORT, '/raw/gzip-chunked')
+
+      expect(response.statusCode).to.equal(200)
+      expect(response.headers['transfer-encoding']).to.equal(undefined)
+      expect(response.headers['content-length']).to.equal('5')
+      expect(response.body).to.equal('hello')
+    })
+
     it('(Connection: close) failed upstream body does not leak upstream headers', async () => {
       const response = await rawRequest(GATEWAY_PORT, '/http/gzip-aborted')
 
@@ -125,6 +149,37 @@ describe('default hooks', () => {
         .then((response) => {
           expect(response.text).to.equal('hello')
         })
+    })
+
+    it('defaults to 200 when neither the payload nor the invocation has a status code', async () => {
+      await request(gateway)
+        .get('/lambda-no-status/info')
+        .timeout(1000)
+        .expect(200)
+        .then((response) => {
+          expect(response.text).to.equal('no status')
+        })
+    })
+
+    it('sends an empty body when the payload has none', async () => {
+      await request(gateway)
+        .get('/lambda-no-body/info')
+        .timeout(1000)
+        .expect(204)
+    })
+
+    it('handles a null payload', () => {
+      const res = {
+        end (body) {
+          this.ended = true
+          this.body = body
+        }
+      }
+      defaultHooks.lambda.onResponse({}, res, { StatusCode: 200, Payload: 'null' })
+
+      expect(res.statusCode).to.equal(200)
+      expect(res.ended).to.equal(true)
+      expect(res.body).to.equal(undefined)
     })
 
     it('serializes non-string bodies', async () => {

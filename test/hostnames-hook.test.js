@@ -79,6 +79,18 @@ describe('hostnames-hook', () => {
     })
   })
 
+  it('is not match - missing host header', (cb) => {
+    const req = {
+      headers: {},
+      url: '/about'
+    }
+
+    hostnamesHook(req, null, () => {
+      expect(req.url).to.equal('/about')
+      cb()
+    })
+  })
+
   it('is match - host header is case-insensitive', (cb) => {
     const req = {
       headers: {

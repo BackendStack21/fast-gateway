@@ -115,6 +115,16 @@ describe('ws-proxy regressions', function () {
         },
         {
           proxyType: 'websocket',
+          prefix: '/broken-hooks',
+          target,
+          hooks: {
+            get onOpen () {
+              throw new Error('broken route config')
+            }
+          }
+        },
+        {
+          proxyType: 'websocket',
           prefix: '/emoji-reason',
           target,
           hooks: { onOpen: failingHook(4401, 'a'.repeat(120) + '\u{1F600}') }
@@ -187,6 +197,15 @@ describe('ws-proxy regressions', function () {
     const event = await nextClose(ws)
 
     expect(event.code).to.equal(1006)
+  })
+
+  it('drops the connection on unexpected errors instead of crashing', async () => {
+    const before = state.upgrades
+    const ws = new WebSocket.Client(`ws://127.0.0.1:${GW_PORT}/broken-hooks`)
+    const event = await nextClose(ws)
+
+    expect(event.code).to.equal(1006)
+    expect(state.upgrades).to.equal(before)
   })
 
   it('truncates long close reasons on a character boundary', async () => {

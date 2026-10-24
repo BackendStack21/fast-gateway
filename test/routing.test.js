@@ -87,6 +87,21 @@ describe('routing', () => {
             }
           },
           {
+            prefix: '/partial-response-completed',
+            target,
+            proxyHandler: (req, res) => {
+              res.writeHead(200)
+              res.write('partial')
+
+              throw new Error('failed after the response started')
+            },
+            hooks: {
+              onError (_err, req, res) {
+                res.end(' completed by onError')
+              }
+            }
+          },
+          {
             prefix: '/partial-response-on-error',
             target,
             proxyHandler: (req, res) => {
@@ -150,6 +165,14 @@ describe('routing', () => {
       expect(response.body).to.not.match(/0\r\n\r\n$/)
     })
 
+    it('keeps a partially sent response that onError completed', async () => {
+      const response = await rawRequest(9502, '/partial-response-completed/info', { timeout: 1000 })
+
+      expect(response.statusCode).to.equal(200)
+      expect(response.body).to.include('completed by onError')
+      expect(response.body).to.match(/0\r\n\r\n$/)
+    })
+
     it('terminates a partially sent response when onError does not respond', async () => {
       onErrorCalls.length = 0
       const response = await rawRequest(9502, '/partial-response-on-error/info', { timeout: 1000 })
@@ -169,6 +192,7 @@ describe('routing', () => {
           { prefix: '/users', target },
           { prefix: '/internal', prefixRewrite: '/v$&', target },
           { prefix: '/slash', prefixRewrite: '/v2/', target },
+          { prefix: '/tenants/:tid', target },
           { prefix: '/', target }
         ]
       }, 9503)
@@ -234,6 +258,15 @@ describe('routing', () => {
         })
     })
 
+    it('forwards urls unchanged when the prefix is not literal', async () => {
+      await request(gateway)
+        .get('/tenants/42/items')
+        .expect(200)
+        .then((response) => {
+          expect(response.body.url).to.equal('/tenants/42/items')
+        })
+    })
+
     it('"/" prefix acts as a catch-all route', async () => {
       await request(gateway)
         .get('/foo/bar')
@@ -270,6 +303,16 @@ describe('routing', () => {
       gateway = await start({
         routes: [
           { prefix: '/svc', target },
+          {
+            prefix: '/no-query-parser',
+            target,
+            middlewares: [
+              (req, res, next) => {
+                req.query = undefined
+                next()
+              }
+            ]
+          },
           {
             prefix: '/strip-token',
             target,
@@ -308,6 +351,15 @@ describe('routing', () => {
         .expect(200)
         .then((response) => {
           expect(response.body.url).to.equal('/items?a=1&a=2&b=3')
+        })
+    })
+
+    it('forwards the raw query string when req.query is not available', async () => {
+      await request(gateway)
+        .get('/no-query-parser/items?a=1&a=2')
+        .expect(200)
+        .then((response) => {
+          expect(response.body.rawUrl).to.equal('/items?a=1&a=2')
         })
     })
 
@@ -487,6 +539,109 @@ describe('routing', () => {
       expect(() => fastGateway({
         pathRegex: undefined,
         routes: [{ prefix: '/api/', target }]
+      })).to.not.throw()
+    })
+
+    it('creates "http-legacy" proxies using fast-proxy', async () => {
+      // fast-proxy is an optional dependency, stand in for it with fast-proxy-lite
+      const Module = require('module')
+      const resolveFilename = Module._resolveFilename
+      const fastProxyLite = require('fast-proxy-lite')
+      const configs = []
+      Module._resolveFilename = function (request, ...args) {
+        return request === 'fast-proxy'
+          ? 'fast-proxy'
+          : resolveFilename.call(this, request, ...args)
+      }
+      require.cache['fast-proxy'] = {
+        id: 'fast-proxy',
+        filename: 'fast-proxy',
+        loaded: true,
+        exports: (config) => {
+          configs.push(config)
+
+          return fastProxyLite(config)
+        }
+      }
+
+      try {
+        const gateway = await start({
+          routes: [
+            {
+              prefix: '/legacy',
+              proxyType: 'http-legacy',
+              target,
+              proxyConfig: { cacheURLs: 0 }
+            }
+          ]
+        }, 9513)
+
+        await request(gateway)
+          .get('/legacy/info?a=1&a=2')
+          .expect(200)
+          .then((response) => {
+            expect(response.body.url).to.equal('/info?a=1&a=2')
+          })
+        expect(configs).to.deep.equal([{ base: target, cacheURLs: 0 }])
+      } finally {
+        Module._resolveFilename = resolveFilename
+        delete require.cache['fast-proxy']
+      }
+    })
+
+    it('uses the default proxy factory when proxyFactory returns undefined', async () => {
+      const gateway = await start({
+        proxyFactory: () => undefined,
+        routes: [{ prefix: '/svc', target }]
+      }, 9514)
+
+      await request(gateway)
+        .get('/svc/info')
+        .expect(200)
+        .then((response) => {
+          expect(response.body.url).to.equal('/info')
+        })
+    })
+
+    it('supports custom proxy types created by proxyFactory', async () => {
+      const gateway = await start({
+        proxyFactory: ({ proxyType }) => {
+          if (proxyType === 'custom') {
+            return (req, res, url) => res.end('custom proxy: ' + url)
+          }
+        },
+        routes: [{ prefix: '/custom', proxyType: 'custom', target }]
+      }, 9515)
+
+      await request(gateway)
+        .get('/custom/items')
+        .expect(200)
+        .then((response) => {
+          expect(response.text).to.equal('custom proxy: /items')
+        })
+    })
+
+    it('rejects unsupported proxy types', () => {
+      const routes = [{ prefix: '/svc', proxyType: 'unknown', target }]
+
+      expect(() => fastGateway({ routes })).to.throw(
+        'Unsupported proxy type, expecting one of http,http-legacy,lambda'
+      )
+      expect(() => fastGateway({ proxyFactory: () => undefined, routes })).to.throw(
+        'Unsupported proxy type: unknown!'
+      )
+    })
+
+    it('requires getServer() on custom servers for websocket routes', () => {
+      expect(() => fastGateway({
+        server: require('express')(),
+        routes: [{ proxyType: 'websocket', prefix: '/ws', target: 'ws://127.0.0.1:1' }]
+      })).to.throw(/Unable to retrieve the HTTP server instance/)
+    })
+
+    it('ignores methods the server does not support', () => {
+      expect(() => fastGateway({
+        routes: [{ prefix: '/svc', methods: ['TRACE'], target }]
       })).to.not.throw()
     })
 
