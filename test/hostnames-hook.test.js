@@ -78,4 +78,69 @@ describe('hostnames-hook', () => {
       cb()
     })
   })
+
+  it('is not match - missing host header', (cb) => {
+    const req = {
+      headers: {},
+      url: '/about'
+    }
+
+    hostnamesHook(req, null, () => {
+      expect(req.url).to.equal('/about')
+      cb()
+    })
+  })
+
+  it('is match - host header is case-insensitive', (cb) => {
+    const req = {
+      headers: {
+        host: 'NodeJS.ORG:443'
+      },
+      url: '/about'
+    }
+
+    hostnamesHook(req, null, () => {
+      expect(req.url).to.equal('/nodejs/about')
+      cb()
+    })
+  })
+
+  it('is not match - host named like an object property', () => {
+    for (const host of ['constructor', '__proto__', 'toString']) {
+      const req = {
+        headers: { host },
+        url: '/about'
+      }
+
+      hostnamesHook(req, null, () => {})
+      expect(req.url).to.equal('/about')
+    }
+  })
+
+  it('does not retain memory for each distinct matching host', () => {
+    const v8 = require('v8')
+    const vm = require('vm')
+    v8.setFlagsFromString('--expose-gc')
+    const gc = vm.runInNewContext('gc')
+
+    const hook = require('./../lib/hostnames-hook')([
+      {
+        prefix: '/users',
+        hostname: '*.company.tld'
+      }
+    ])
+    const label = 'x'.repeat(1000)
+
+    gc()
+    const heapBefore = process.memoryUsage().heapUsed
+    for (let i = 0; i < 20000; i++) {
+      hook({ headers: { host: `${label}${i}.company.tld` }, url: '/' }, null, () => {})
+    }
+    gc()
+    const retained = process.memoryUsage().heapUsed - heapBefore
+
+    // keep the hook (and anything it holds) reachable until after the measurement
+    hook({ headers: { host: 'api.company.tld' }, url: '/' }, null, () => {})
+    expect(retained).to.be.below(5 * 1024 * 1024)
+  })
 })

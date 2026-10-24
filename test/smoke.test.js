@@ -376,11 +376,20 @@ describe('API Gateway', () => {
       })
   })
 
-  it('large chunked rejected with 502 when Connection close (buffer limit)', async () => {
+  it('large chunked streamed when Connection close (above buffer limit)', async () => {
     await request(gateway)
       .get('/users/large-chunked')
       .set({ Connection: 'close' })
-      .expect(502)
+      .buffer(true)
+      .parse((res, cb) => {
+        let length = 0
+        res.on('data', (chunk) => { length += chunk.length })
+        res.on('end', () => cb(null, length))
+      })
+      .expect(200)
+      .then((response) => {
+        expect(response.body).to.equal(2 * 1024 * 1024)
+      })
   })
 
   it('large chunked streamed normally when Connection keep-alive', async () => {

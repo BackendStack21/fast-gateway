@@ -1,0 +1,691 @@
+'use strict'
+
+/* global describe, it, before, after */
+const expect = require('chai').expect
+const request = require('supertest')
+const http = require('http')
+const fastGateway = require('../index')
+const rawRequest = require('./raw-http')
+
+const UPSTREAM_PORT = 9501
+const target = `http://127.0.0.1:${UPSTREAM_PORT}`
+
+describe('routing', () => {
+  let upstream
+  const gateways = []
+  const unhandled = []
+  const onUnhandled = (reason) => unhandled.push(reason)
+
+  const start = async (opts, port) => {
+    const gateway = fastGateway(opts)
+    await gateway.start(port)
+    gateways.push(gateway)
+
+    return gateway
+  }
+
+  before(async () => {
+    process.on('unhandledRejection', onUnhandled)
+
+    upstream = http.createServer((req, res) => {
+      const reply = () => {
+        res.setHeader('content-type', 'application/json')
+        // the gateway always appends '?' when forwarding req.query, ignore it
+        res.end(JSON.stringify({
+          method: req.method,
+          url: req.url.replace(/\?$/, ''),
+          rawUrl: req.url
+        }))
+      }
+      if (req.url.startsWith('/slow')) {
+        setTimeout(reply, 300)
+      } else {
+        reply()
+      }
+    })
+    await new Promise((resolve) => upstream.listen(UPSTREAM_PORT, resolve))
+  })
+
+  after(async () => {
+    process.removeListener('unhandledRejection', onUnhandled)
+
+    for (const gateway of gateways) {
+      await gateway.close()
+    }
+    upstream.closeAllConnections()
+    await new Promise((resolve) => upstream.close(resolve))
+  })
+
+  describe('error handling', () => {
+    let gateway
+    const onErrorCalls = []
+
+    before(async () => {
+      gateway = await start({
+        routes: [
+          {
+            prefix: '/on-error-responds',
+            target,
+            hooks: {
+              async onRequest (req) {
+                throw Object.assign(new Error('unauthorized'), { status: 401 })
+              },
+              onError (err, req, res) {
+                res.statusCode = err.status
+                res.end(JSON.stringify({ error: err.message }))
+              }
+            }
+          },
+          {
+            prefix: '/partial-response',
+            target,
+            proxyHandler: (req, res) => {
+              res.writeHead(200)
+              res.write('partial')
+
+              throw new Error('failed after the response started')
+            }
+          },
+          {
+            prefix: '/partial-response-completed',
+            target,
+            proxyHandler: (req, res) => {
+              res.writeHead(200)
+              res.write('partial')
+
+              throw new Error('failed after the response started')
+            },
+            hooks: {
+              onError (_err, req, res) {
+                res.end(' completed by onError')
+              }
+            }
+          },
+          {
+            prefix: '/partial-response-on-error',
+            target,
+            proxyHandler: (req, res) => {
+              res.writeHead(200)
+              res.write('partial')
+
+              throw new Error('failed after the response started')
+            },
+            hooks: {
+              onError (err) {
+                onErrorCalls.push(err)
+              }
+            }
+          },
+          {
+            prefix: '/async-proxy-handler',
+            target,
+            proxyHandler: async () => {
+              throw new Error('proxy handler failed')
+            },
+            hooks: {
+              onError (err) {
+                onErrorCalls.push(err)
+              }
+            }
+          }
+        ]
+      }, 9502)
+    })
+
+    it('onError hook sending its own response does not trigger a second response', async () => {
+      unhandled.length = 0
+
+      await request(gateway)
+        .get('/on-error-responds/info')
+        .expect(401)
+        .then((response) => {
+          expect(JSON.parse(response.text)).to.deep.equal({ error: 'unauthorized' })
+        })
+
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      expect(unhandled.map((err) => err.code)).to.deep.equal([])
+    })
+
+    it('rejecting async proxyHandler is routed to onError and answered with 500', async () => {
+      onErrorCalls.length = 0
+
+      await request(gateway)
+        .get('/async-proxy-handler/info')
+        .timeout(1000)
+        .expect(500)
+
+      expect(onErrorCalls).to.have.lengthOf(1)
+      expect(onErrorCalls[0].message).to.equal('proxy handler failed')
+    })
+
+    it('terminates a partially sent response when the handler fails', async () => {
+      // resolves once the gateway closes the connection, rejects if it hangs
+      const response = await rawRequest(9502, '/partial-response/info', { timeout: 1000 })
+
+      expect(response.body).to.not.match(/0\r\n\r\n$/)
+    })
+
+    it('keeps a partially sent response that onError completed', async () => {
+      const response = await rawRequest(9502, '/partial-response-completed/info', { timeout: 1000 })
+
+      expect(response.statusCode).to.equal(200)
+      expect(response.body).to.include('completed by onError')
+      expect(response.body).to.match(/0\r\n\r\n$/)
+    })
+
+    it('terminates a partially sent response when onError does not respond', async () => {
+      onErrorCalls.length = 0
+      const response = await rawRequest(9502, '/partial-response-on-error/info', { timeout: 1000 })
+
+      expect(response.body).to.not.match(/0\r\n\r\n$/)
+      expect(onErrorCalls).to.have.lengthOf(1)
+    })
+  })
+
+  describe('url rewriting', () => {
+    let gateway
+
+    before(async () => {
+      gateway = await start({
+        routes: [
+          { prefix: '/public', prefixRewrite: '/api/public', target },
+          { prefix: '/users', target },
+          { prefix: '/internal', prefixRewrite: '/v$&', target },
+          { prefix: '/slash', prefixRewrite: '/v2/', target },
+          { prefix: '/tenants/:tid', target },
+          { prefix: '/', target }
+        ]
+      }, 9503)
+    })
+
+    it('forwards regular paths with the prefix rewritten', async () => {
+      await request(gateway)
+        .get('/public/docs')
+        .expect(200)
+        .then((response) => {
+          expect(response.body.url).to.equal('/api/public/docs')
+        })
+    })
+
+    for (const path of [
+      '/public/../../admin/users',
+      '/public/%2e%2e/%2e%2e/admin/users',
+      '/public/.%2E/admin/users',
+      '/public/..\\..\\admin/users',
+      '/public/..;/..;/admin/users',
+      '/public/..%2f..%2fadmin/users',
+      '/public/%2e%2e%5C%2e%2e%5Cadmin/users'
+    ]) {
+      it(`rejects dot-segment traversal: ${path}`, async () => {
+        const response = await rawRequest(9503, path)
+        expect(response.statusCode).to.equal(400)
+      })
+    }
+
+    it('matches prefixes case-sensitively by default', async () => {
+      // "/Users" does not match the "/users" route, the "/" catch-all handles it
+      await request(gateway)
+        .get('/Users/42')
+        .expect(200)
+        .then((response) => {
+          expect(response.body.url).to.equal('/Users/42')
+        })
+    })
+
+    it('only strips the prefix from the beginning of the url', async () => {
+      await request(gateway)
+        .get('/users/a/users/b')
+        .expect(200)
+        .then((response) => {
+          expect(response.body.url).to.equal('/a/users/b')
+        })
+    })
+
+    it('uses prefixRewrite literally (no replacement patterns)', async () => {
+      await request(gateway)
+        .get('/internal/info')
+        .expect(200)
+        .then((response) => {
+          expect(response.body.url).to.equal('/v$&/info')
+        })
+    })
+
+    it('prefixRewrite ending with "/" does not produce a double slash', async () => {
+      await request(gateway)
+        .get('/slash/users')
+        .expect(200)
+        .then((response) => {
+          expect(response.body.url).to.equal('/v2/users')
+        })
+    })
+
+    it('forwards urls unchanged when the prefix is not literal', async () => {
+      await request(gateway)
+        .get('/tenants/42/items')
+        .expect(200)
+        .then((response) => {
+          expect(response.body.url).to.equal('/tenants/42/items')
+        })
+    })
+
+    it('"/" prefix acts as a catch-all route', async () => {
+      await request(gateway)
+        .get('/foo/bar')
+        .expect(200)
+        .then((response) => {
+          expect(response.body.url).to.equal('/foo/bar')
+        })
+    })
+  })
+
+  describe('case-insensitive routing', () => {
+    let gateway
+
+    before(async () => {
+      gateway = await start({
+        restana: { caseSensitive: false },
+        routes: [{ prefix: '/users', target }]
+      }, 9516)
+    })
+
+    it('strips the prefix case-insensitively, matching how routes are matched', async () => {
+      await request(gateway)
+        .get('/Users/42')
+        .expect(200)
+        .then((response) => {
+          expect(response.body.url).to.equal('/42')
+        })
+    })
+
+    it('only strips the prefix from the beginning of the url', async () => {
+      await request(gateway)
+        .get('/USERS/a/users/b')
+        .expect(200)
+        .then((response) => {
+          expect(response.body.url).to.equal('/a/users/b')
+        })
+    })
+  })
+
+  describe('trailing slash prefix', () => {
+    let gateway
+
+    before(async () => {
+      gateway = await start({
+        routes: [{ prefix: '/svc/', prefixRewrite: '/api', target }]
+      }, 9504)
+    })
+
+    it('matches nested paths and rewrites them', async () => {
+      await request(gateway)
+        .get('/svc/foo')
+        .expect(200)
+        .then((response) => {
+          expect(response.body.url).to.equal('/api/foo')
+        })
+    })
+  })
+
+  describe('query string', () => {
+    let gateway
+
+    before(async () => {
+      gateway = await start({
+        routes: [
+          { prefix: '/svc', target },
+          {
+            prefix: '/no-query-parser',
+            target,
+            middlewares: [
+              (req, res, next) => {
+                req.query = undefined
+                next()
+              }
+            ]
+          },
+          {
+            prefix: '/strip-token',
+            target,
+            hooks: {
+              onRequest (req) {
+                delete req.query.token
+              }
+            }
+          },
+          {
+            prefix: '/inspect',
+            target,
+            proxyHandler: (req, res, url, proxy, proxyOpts) => {
+              res.setHeader('x-page', proxyOpts.queryString.page)
+              res.setHeader('x-query', JSON.stringify({ ...proxyOpts.queryString }))
+
+              return proxy(req, res, url, proxyOpts)
+            }
+          },
+          {
+            prefix: '/set-query',
+            target,
+            hooks: {
+              onRequest (req) {
+                req.query.name = 'fast-gateway'
+              }
+            }
+          }
+        ]
+      }, 9505)
+    })
+
+    it('keeps repeated query parameters', async () => {
+      await request(gateway)
+        .get('/svc/items?a=1&a=2&b=3')
+        .expect(200)
+        .then((response) => {
+          expect(response.body.url).to.equal('/items?a=1&a=2&b=3')
+        })
+    })
+
+    it('forwards the raw query string when req.query is not available', async () => {
+      await request(gateway)
+        .get('/no-query-parser/items?a=1&a=2')
+        .expect(200)
+        .then((response) => {
+          expect(response.body.rawUrl).to.equal('/items?a=1&a=2')
+        })
+    })
+
+    it('does not append "?" when there is no query string', async () => {
+      await request(gateway)
+        .get('/svc/items')
+        .expect(200)
+        .then((response) => {
+          expect(response.body.rawUrl).to.equal('/items')
+        })
+    })
+
+    it('does not forward query parameters removed in onRequest', async () => {
+      await request(gateway)
+        .get('/strip-token/items?token=secret')
+        .expect(200)
+        .then((response) => {
+          expect(response.body.rawUrl).to.not.include('token')
+        })
+    })
+
+    it('proxyOpts.queryString stays a plain object with repeated parameters', async () => {
+      await request(gateway)
+        .get('/inspect/items?tag=a&tag=b&page=2')
+        .expect(200)
+        .then((response) => {
+          expect(response.headers['x-page']).to.equal('2')
+          expect(JSON.parse(response.headers['x-query'])).to.deep.equal({ tag: ['a', 'b'], page: '2' })
+          expect(response.body.url).to.equal('/items?tag=a&tag=b&page=2')
+        })
+    })
+
+    it('allows onRequest to set req.query when the request has no query string', async () => {
+      await request(gateway)
+        .get('/set-query/items')
+        .expect(200)
+        .then((response) => {
+          expect(response.body.url).to.equal('/items?name=fast-gateway')
+        })
+    })
+  })
+
+  describe('timeouts', () => {
+    let gateway
+
+    before(async () => {
+      gateway = await start({
+        timeout: 100,
+        routes: [
+          {
+            prefix: '/request-opts',
+            target,
+            hooks: {
+              request: { family: 4 }
+            }
+          },
+          {
+            prefix: '/disabled',
+            timeout: 0,
+            target
+          }
+        ]
+      }, 9506)
+    })
+
+    it('keeps the route timeout when hooks.request is set', async () => {
+      await request(gateway).get('/request-opts/slow').expect(504)
+    })
+
+    it('timeout: 0 disables the global timeout for a route', async () => {
+      await request(gateway).get('/disabled/slow').expect(200)
+    })
+  })
+
+  describe('route configuration objects', () => {
+    it('shared hooks object between http and lambda routes', async () => {
+      const hooks = {}
+      const gateway = await start({
+        routes: [
+          { prefix: '/http', target, hooks },
+          {
+            prefix: '/lambda',
+            proxyType: 'lambda',
+            target: 'a-lambda-function',
+            proxyConfig: {
+              lambdaProxy: (params, cb) => setImmediate(() => cb(null, {
+                StatusCode: 200,
+                Payload: JSON.stringify({ statusCode: 200, body: 'from lambda' })
+              }))
+            },
+            hooks
+          }
+        ]
+      }, 9507)
+
+      await request(gateway)
+        .get('/http/info')
+        .expect(200)
+        .then((response) => {
+          expect(response.body.url).to.equal('/info')
+        })
+
+      await request(gateway)
+        .get('/lambda/info')
+        .timeout(1000)
+        .expect(200)
+        .then((response) => {
+          expect(response.text).to.equal('from lambda')
+        })
+
+      expect(hooks).to.deep.equal({})
+    })
+
+    it('reusing routes for another gateway does not leak settings', async () => {
+      const routes = [{ prefix: '/svc', target }]
+      await start({ timeout: 100, routes }, 9508)
+      const gateway = await start({ routes }, 9509)
+
+      await request(gateway).get('/svc/slow').expect(200)
+    })
+
+    it('supports the documented "http-legacy" proxy type', async () => {
+      const fastProxyLite = require('fast-proxy-lite')
+      const gateway = await start({
+        proxyFactory: ({ proxyType, route }) => {
+          if (proxyType === 'http-legacy') {
+            return fastProxyLite({ base: route.target }).proxy
+          }
+        },
+        routes: [{ prefix: '/legacy', proxyType: 'http-legacy', target }]
+      }, 9510)
+
+      await request(gateway)
+        .get('/legacy/info')
+        .timeout(1000)
+        .expect(200)
+        .then((response) => {
+          expect(response.body.url).to.equal('/info')
+        })
+
+      expect(() => fastGateway({
+        routes: [{ prefix: '/legacy', proxyType: 'http-legacy', target }]
+      })).to.not.throw(/Unsupported proxy type/)
+    })
+
+    it('passes req.query unchanged to non "http" proxy types', async () => {
+      const gateway = await start({
+        proxyFactory: () => () => {},
+        routes: [
+          {
+            prefix: '/legacy',
+            proxyType: 'http-legacy',
+            target,
+            proxyHandler: (req, res, url, proxy, proxyOpts) => {
+              res.setHeader('content-type', 'application/json')
+              res.end(JSON.stringify({
+                isURLSearchParams: proxyOpts.queryString instanceof URLSearchParams,
+                queryString: proxyOpts.queryString
+              }))
+            }
+          }
+        ]
+      }, 9512)
+
+      await request(gateway)
+        .get('/legacy/items?a=1&a=2&b=3')
+        .expect(200)
+        .then((response) => {
+          expect(response.body).to.deep.equal({
+            isURLSearchParams: false,
+            queryString: { a: ['1', '2'], b: '3' }
+          })
+        })
+    })
+
+    it('does not crash on a non-string pathRegex', () => {
+      expect(() => fastGateway({
+        pathRegex: undefined,
+        routes: [{ prefix: '/api/', target }]
+      })).to.not.throw()
+    })
+
+    it('creates "http-legacy" proxies using fast-proxy', async () => {
+      // fast-proxy is an optional dependency, stand in for it with fast-proxy-lite
+      const Module = require('module')
+      const resolveFilename = Module._resolveFilename
+      const fastProxyLite = require('fast-proxy-lite')
+      const configs = []
+      Module._resolveFilename = function (request, ...args) {
+        return request === 'fast-proxy'
+          ? 'fast-proxy'
+          : resolveFilename.call(this, request, ...args)
+      }
+      require.cache['fast-proxy'] = {
+        id: 'fast-proxy',
+        filename: 'fast-proxy',
+        loaded: true,
+        exports: (config) => {
+          configs.push(config)
+
+          return fastProxyLite(config)
+        }
+      }
+
+      try {
+        const gateway = await start({
+          routes: [
+            {
+              prefix: '/legacy',
+              proxyType: 'http-legacy',
+              target,
+              proxyConfig: { cacheURLs: 0 }
+            }
+          ]
+        }, 9513)
+
+        await request(gateway)
+          .get('/legacy/info?a=1&a=2')
+          .expect(200)
+          .then((response) => {
+            expect(response.body.url).to.equal('/info?a=1&a=2')
+          })
+        expect(configs).to.deep.equal([{ base: target, cacheURLs: 0 }])
+      } finally {
+        Module._resolveFilename = resolveFilename
+        delete require.cache['fast-proxy']
+      }
+    })
+
+    it('uses the default proxy factory when proxyFactory returns undefined', async () => {
+      const gateway = await start({
+        proxyFactory: () => undefined,
+        routes: [{ prefix: '/svc', target }]
+      }, 9514)
+
+      await request(gateway)
+        .get('/svc/info')
+        .expect(200)
+        .then((response) => {
+          expect(response.body.url).to.equal('/info')
+        })
+    })
+
+    it('supports custom proxy types created by proxyFactory', async () => {
+      const gateway = await start({
+        proxyFactory: ({ proxyType }) => {
+          if (proxyType === 'custom') {
+            return (req, res, url) => res.end('custom proxy: ' + url)
+          }
+        },
+        routes: [{ prefix: '/custom', proxyType: 'custom', target }]
+      }, 9515)
+
+      await request(gateway)
+        .get('/custom/items')
+        .expect(200)
+        .then((response) => {
+          expect(response.text).to.equal('custom proxy: /items')
+        })
+    })
+
+    it('rejects unsupported proxy types', () => {
+      const routes = [{ prefix: '/svc', proxyType: 'unknown', target }]
+
+      expect(() => fastGateway({ routes })).to.throw(
+        'Unsupported proxy type, expecting one of http,http-legacy,lambda'
+      )
+      expect(() => fastGateway({ proxyFactory: () => undefined, routes })).to.throw(
+        'Unsupported proxy type: unknown!'
+      )
+    })
+
+    it('requires getServer() on custom servers for websocket routes', () => {
+      expect(() => fastGateway({
+        server: require('express')(),
+        routes: [{ proxyType: 'websocket', prefix: '/ws', target: 'ws://127.0.0.1:1' }]
+      })).to.throw(/Unable to retrieve the HTTP server instance/)
+    })
+
+    it('ignores methods the server does not support', () => {
+      expect(() => fastGateway({
+        routes: [{ prefix: '/svc', methods: ['TRACE'], target }]
+      })).to.not.throw()
+    })
+
+    it('services.json describes RegExp prefixes', async () => {
+      const gateway = await start({
+        routes: [{ prefix: /\/regex\/.*/, target }]
+      }, 9511)
+
+      await request(gateway)
+        .get('/services.json')
+        .expect(200)
+        .then((response) => {
+          expect(response.body).to.deep.equal([{ prefix: '/\\/regex\\/.*/' }])
+        })
+    })
+  })
+})

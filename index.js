@@ -6,12 +6,16 @@ const defaultProxyFactory = require('./lib/proxy-factory')
 const restana = require('restana')
 const defaultProxyHandler = (req, res, url, proxy, proxyOpts) =>
   proxy(req, res, url, proxyOpts)
-const DEFAULT_METHODS = require('restana/libs/methods').BASE.filter(
-  (method) => method !== 'all'
-)
+// restana's base HTTP methods, without "all"
+const DEFAULT_METHODS = ['get', 'delete', 'patch', 'post', 'put', 'head', 'options']
 const NOOP = (req, res) => {}
-const PROXY_TYPES = ['http', 'lambda']
+const PROXY_TYPES = ['http', 'http-legacy', 'lambda']
 const registerWebSocketRoutes = require('./lib/ws-proxy')
+// "." and ".." path segments, also percent-encoded or separated by a backslash
+// or an encoded (back)slash, some upstreams decode those before normalizing
+// (a ";" path parameter is ignored by some upstreams, e.g. "/..;/")
+const DOT_SEGMENT_REGEX =
+  /(?:^|[/\\]|%2f|%5c)(?:\.|%2e){1,2}(?:;[^/\\]*)?(?:[/\\]|%2f|%5c|$)/i
 
 const gateway = (opts) => {
   let proxyFactory
@@ -43,7 +47,8 @@ const gateway = (opts) => {
 
   // registering services.json
   const services = opts.routes.map((route) => ({
-    prefix: route.prefix,
+    prefix:
+      route.prefix instanceof RegExp ? route.prefix.toString() : route.prefix,
     docs: route.docs
   }))
   if (opts.enableServicesEndpoint) {
@@ -74,7 +79,10 @@ const gateway = (opts) => {
   // processing non-websocket routes
   opts.routes
     .filter((route) => route.proxyType !== 'websocket')
-    .forEach((route) => {
+    .forEach((routeConfig) => {
+      // route configs can be shared between routes or gateways, don't mutate them
+      const route = Object.assign({}, routeConfig)
+
       if (undefined === route.prefixRewrite) {
         route.prefixRewrite = ''
       }
@@ -95,9 +103,11 @@ const gateway = (opts) => {
       const { onRequestNoOp = NOOP, onResponse = NOOP } = hooksForDefaultType
 
       // populating required NOOPS
-      route.hooks = route.hooks || {}
-      route.hooks.onRequest = route.hooks.onRequest || onRequestNoOp
-      route.hooks.onResponse = route.hooks.onResponse || onResponse
+      const hooks = route.hooks || {}
+      route.hooks = Object.assign({}, hooks, {
+        onRequest: hooks.onRequest || onRequestNoOp,
+        onResponse: hooks.onResponse || onResponse
+      })
 
       // populating route middlewares
       route.middlewares = route.middlewares || []
@@ -112,21 +122,30 @@ const gateway = (opts) => {
       // route proxy handler function
       const proxyHandler = route.proxyHandler || defaultProxyHandler
 
-      // populating timeout config
-      route.timeout = route.timeout || opts.timeout
+      // populating timeout config, 0 disables the timeout
+      route.timeout = route.timeout ?? opts.timeout
+
+      // avoid a double slash between prefix and pathRegex, e.g. prefix: '/'
+      let prefix = route.prefix
+      if (
+        typeof prefix === 'string' &&
+        prefix.endsWith('/') &&
+        typeof route.pathRegex === 'string' &&
+        route.pathRegex.startsWith('/')
+      ) {
+        prefix = prefix.slice(0, -1)
+      }
 
       // registering route handlers
       const methods = route.methods || DEFAULT_METHODS
 
       const args = [
         // path
-        route.prefix instanceof RegExp
-          ? route.prefix
-          : route.prefix + route.pathRegex,
+        prefix instanceof RegExp ? prefix : prefix + route.pathRegex,
         // route middlewares
         ...route.middlewares,
         // route handler
-        handler(route, proxy, proxyHandler)
+        handler(route, prefix, proxy, proxyHandler)
       ]
 
       methods.forEach((method) => {
@@ -140,10 +159,56 @@ const gateway = (opts) => {
   return router
 }
 
-const handler = (route, proxy, proxyHandler) => async (req, res, next) => {
+const hasDotSegment = (url) => {
+  const queryIndex = url.indexOf('?')
+
+  return DOT_SEGMENT_REGEX.test(
+    queryIndex === -1 ? url : url.slice(0, queryIndex)
+  )
+}
+
+// routes can be matched case-insensitively (e.g. restana's caseSensitive: false),
+// so the prefix is stripped the same way
+const stripPrefix = (url, prefix, prefixRewrite) => {
+  if (url.slice(0, prefix.length).toLowerCase() !== prefix.toLowerCase()) {
+    return url
+  }
+
+  // avoid a double slash when prefixRewrite ends with "/", e.g. '/api/'
+  const rest = url.slice(prefix.length)
+
+  return prefixRewrite.endsWith('/') && rest.startsWith('/')
+    ? prefixRewrite + rest.slice(1)
+    : prefixRewrite + rest
+}
+
+// URLSearchParams(object) joins repeated parameters (arrays) with commas,
+// iterating [name, value] pairs makes it append each value instead
+function * queryPairs () {
+  for (const name in this) {
+    for (const value of [].concat(this[name])) yield [name, value]
+  }
+}
+
+const toQueryString = (query, url) => {
+  if (!query) return query
+
+  const values = Object.values(query)
+  // nothing to forward, avoids a trailing "?" in the upstream url
+  if (values.length === 0 && !url.includes('?')) return null
+  if (!values.some(Array.isArray)) return query
+
+  // still a plain object for hooks and custom proxy handlers
+  return Object.defineProperty(
+    Object.assign(Object.create(null), query),
+    Symbol.iterator,
+    { value: queryPairs }
+  )
+}
+
+const handler = (route, prefix, proxy, proxyHandler) => async (req, res, next) => {
   const {
     urlRewrite,
-    prefix,
     prefixRewrite,
     hooks,
     timeout,
@@ -152,27 +217,45 @@ const handler = (route, proxy, proxyHandler) => async (req, res, next) => {
   const { onRequest } = hooks
 
   try {
+    // the upstream would resolve dot segments, escaping the route prefix
+    if (hasDotSegment(req.url)) {
+      res.statusCode = 400
+      res.end('Bad Request')
+
+      return
+    }
+
     if (typeof urlRewrite === 'function') {
       req.url = urlRewrite(req)
     } else if (typeof prefix === 'string') {
-      req.url = req.url.replace(prefix, prefixRewrite)
+      req.url = stripPrefix(req.url, prefix, prefixRewrite)
+    }
+
+    // restana shares a frozen empty req.query when there is no query string
+    if (req.query && Object.isFrozen(req.query)) {
+      req.query = Object.create(null)
     }
 
     const shouldAbortProxy = await onRequest(req, res)
     if (!shouldAbortProxy) {
       const proxyOpts = Object.assign(
         {
-          request: {
-            timeout: req.timeout || timeout
-          },
-          queryString: disableQsOverwrite ? null : req.query
+          queryString: disableQsOverwrite
+            ? null
+            : toQueryString(req.query, req.url)
         },
-        route.hooks
+        hooks,
+        {
+          request: Object.assign({}, hooks.request, {
+            timeout: req.timeout ?? hooks.request?.timeout ?? timeout
+          })
+        }
       )
 
-      proxyHandler(req, res, req.url, proxy, proxyOpts)
+      await proxyHandler(req, res, req.url, proxy, proxyOpts)
     }
   } catch (err) {
+    const headersSent = res.headersSent
     const { onError } = hooks
     if (typeof onError === 'function') {
       try {
@@ -182,7 +265,13 @@ const handler = (route, proxy, proxyHandler) => async (req, res, next) => {
       }
     }
 
-    return next(err)
+    if (headersSent) {
+      // a partially sent response can't be turned into an error response
+      if (!res.writableEnded) res.destroy()
+    } else if (!res.headersSent) {
+      // otherwise the onError hook already sent a response
+      return next(err)
+    }
   }
 }
 
