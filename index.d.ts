@@ -1,7 +1,8 @@
 import * as restana from 'restana'
+import { IncomingMessage } from 'http'
 
 declare namespace fastgateway {
-  type ProxyType = 'http' | 'lambda' | (string & {})
+  type ProxyType = 'http' | 'http-legacy' | 'lambda' | (string & {})
 
   type Method =
     | 'GET'
@@ -45,14 +46,21 @@ declare namespace fastgateway {
   interface WebSocketRoute {
     proxyType: 'websocket'
     proxyConfig?: {} // https://github.com/faye/faye-websocket-node#initialization-options
-    prefix: string
+    prefix: string | string[]
     target: string
-    subProtocols?: [] // https://github.com/faye/faye-websocket-node#subprotocol-negotiation
+    // upstream opening handshake timeout in milliseconds, 0 disables it. Default: 30000
+    timeout?: number
+    subProtocols?: string[] // https://github.com/faye/faye-websocket-node#subprotocol-negotiation
     hooks?: WebSocketHooks
   }
 
   interface WebSocketHooks {
-    onOpen?: (ws: any, searchParams: URLSearchParams) => Promise<void>
+    // "req" is the upgrade request (http.IncomingMessage): headers, cookies, origin...
+    onOpen?: (
+      ws: any,
+      searchParams: URLSearchParams,
+      req: IncomingMessage,
+    ) => void | Promise<void>
   }
 
   interface Hooks {
@@ -70,7 +78,8 @@ declare namespace fastgateway {
   }
 
   interface Options<P extends restana.Protocol> {
-    server?: Object | restana.Service<P> | Express.Application
+    // any HTTP framework with a compatible API, e.g. an Express.js application
+    server?: Object | restana.Service<P>
     proxyFactory?: (opts: ProxyFactoryOpts) => Function | null | undefined
     restana?: {}
     middlewares?: Function[]
@@ -84,6 +93,6 @@ declare namespace fastgateway {
 
 declare function fastgateway<
   P extends restana.Protocol = restana.Protocol.HTTP,
->(opts?: fastgateway.Options<P>): restana.Service<P>
+>(opts: fastgateway.Options<P>): restana.Service<P>
 
 export = fastgateway

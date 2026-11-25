@@ -4,6 +4,7 @@
 
 const defaultProxyFactory = require('./lib/proxy-factory')
 const restana = require('restana')
+const { Readable } = require('stream')
 const defaultProxyHandler = (req, res, url, proxy, proxyOpts) =>
   proxy(req, res, url, proxyOpts)
 // restana's base HTTP methods, without "all"
@@ -11,11 +12,7 @@ const DEFAULT_METHODS = ['get', 'delete', 'patch', 'post', 'put', 'head', 'optio
 const NOOP = (req, res) => {}
 const PROXY_TYPES = ['http', 'http-legacy', 'lambda']
 const registerWebSocketRoutes = require('./lib/ws-proxy')
-// "." and ".." path segments, also percent-encoded or separated by a backslash
-// or an encoded (back)slash, some upstreams decode those before normalizing
-// (a ";" path parameter is ignored by some upstreams, e.g. "/..;/")
-const DOT_SEGMENT_REGEX =
-  /(?:^|[/\\]|%2f|%5c)(?:\.|%2e){1,2}(?:;[^/\\]*)?(?:[/\\]|%2f|%5c|$)/i
+const hasDotSegment = require('./lib/dot-segments')
 
 const gateway = (opts) => {
   let proxyFactory
@@ -100,7 +97,7 @@ const gateway = (opts) => {
       const hooksForDefaultType = isDefaultProxyType
         ? require('./lib/default-hooks')[proxyType]
         : {}
-      const { onRequestNoOp = NOOP, onResponse = NOOP } = hooksForDefaultType
+      const { onRequestNoOp = NOOP, onResponse } = hooksForDefaultType
 
       // populating required NOOPS
       const hooks = route.hooks || {}
@@ -108,6 +105,9 @@ const gateway = (opts) => {
         onRequest: hooks.onRequest || onRequestNoOp,
         onResponse: hooks.onResponse || onResponse
       })
+      // custom proxy types have no default onResponse hook, the proxy
+      // returned by the factory is the one delivering the response then
+      if (!route.hooks.onResponse) delete route.hooks.onResponse
 
       // populating route middlewares
       route.middlewares = route.middlewares || []
@@ -159,14 +159,6 @@ const gateway = (opts) => {
   return router
 }
 
-const hasDotSegment = (url) => {
-  const queryIndex = url.indexOf('?')
-
-  return DOT_SEGMENT_REGEX.test(
-    queryIndex === -1 ? url : url.slice(0, queryIndex)
-  )
-}
-
 // routes can be matched case-insensitively (e.g. restana's caseSensitive: false),
 // so the prefix is stripped the same way
 const stripPrefix = (url, prefix, prefixRewrite) => {
@@ -206,6 +198,52 @@ const toQueryString = (query, url) => {
   )
 }
 
+const handleError = async (err, req, res, next, hooks) => {
+  const headersSent = res.headersSent
+  const { onError } = hooks
+  if (typeof onError === 'function') {
+    try {
+      await onError(err, req, res)
+    } catch (_) {
+      // onError hook failure must not suppress the original error
+    }
+  }
+
+  if (headersSent) {
+    // a partially sent response can't be turned into an error response
+    if (!res.writableEnded) res.destroy()
+  } else if (!res.headersSent) {
+    // otherwise the onError hook already sent a response
+    return next(err)
+  }
+}
+
+// The proxy invokes onResponse outside of the request handler and does not
+// wait for it: a failing hook would be an unhandled rejection (or an uncaught
+// exception), and the client would never get a response.
+const guardOnResponse = (onResponse, res, fail) => {
+  // headers set before proxying, e.g. by middlewares
+  const headerNames = res.getHeaderNames()
+
+  return (req, res, response) =>
+    new Promise((resolve) => resolve(onResponse(req, res, response)))
+      .catch((err) => {
+        // release the upstream
+        if (response instanceof Readable) response.destroy()
+        if (!res.headersSent) {
+          // the upstream headers (content-length, content-encoding,
+          // cache-control...) don't describe the error response
+          res.getHeaderNames().forEach((name) => {
+            if (!headerNames.includes(name)) res.removeHeader(name)
+          })
+        }
+
+        return fail(err)
+      })
+      // e.g. the error handler of the server failed
+      .catch(() => res.destroy())
+}
+
 const handler = (route, prefix, proxy, proxyHandler) => async (req, res, next) => {
   const {
     urlRewrite,
@@ -215,6 +253,15 @@ const handler = (route, prefix, proxy, proxyHandler) => async (req, res, next) =
     disableQsOverwrite
   } = route
   const { onRequest } = hooks
+
+  // the proxy handler and the onResponse hook can both fail
+  let failed = false
+  const fail = (err) => {
+    if (failed) return
+    failed = true
+
+    return handleError(err, req, res, next, hooks)
+  }
 
   try {
     // the upstream would resolve dot segments, escaping the route prefix
@@ -251,27 +298,14 @@ const handler = (route, prefix, proxy, proxyHandler) => async (req, res, next) =
           })
         }
       )
+      if (hooks.onResponse) {
+        proxyOpts.onResponse = guardOnResponse(hooks.onResponse, res, fail)
+      }
 
       await proxyHandler(req, res, req.url, proxy, proxyOpts)
     }
   } catch (err) {
-    const headersSent = res.headersSent
-    const { onError } = hooks
-    if (typeof onError === 'function') {
-      try {
-        await onError(err, req, res)
-      } catch (_) {
-        // onError hook failure must not suppress the original error
-      }
-    }
-
-    if (headersSent) {
-      // a partially sent response can't be turned into an error response
-      if (!res.writableEnded) res.destroy()
-    } else if (!res.headersSent) {
-      // otherwise the onError hook already sent a response
-      return next(err)
-    }
+    return fail(err)
   }
 }
 
