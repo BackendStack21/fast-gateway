@@ -1,7 +1,6 @@
 'use strict'
 
 const gateway = require('../index')
-const onEnd = require('on-http-end')
 const CircuitBreaker = require('opossum')
 
 const options = {
@@ -12,7 +11,7 @@ const options = {
 const breaker = new CircuitBreaker(([req, res, url, proxy, proxyOpts]) => {
   return new Promise((resolve, reject) => {
     proxy(req, res, url, proxyOpts)
-    onEnd(res, () => resolve()) // you can optionally evaluate response codes here...
+    res.once('close', () => resolve()) // you can optionally evaluate response codes here...
   })
 }, options)
 

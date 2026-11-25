@@ -15,6 +15,8 @@ gateway({
     rateLimit({
       windowMs: 1 * 60 * 1000, // 1 minutes
       max: 60, // limit each IP to 60 requests per windowMs
+      // restana has no "trust proxy" setting, the request IP is acquired above
+      validate: { trustProxy: false, xForwardedForHeader: false },
       handler: (req, res) => {
         res.send('Too many requests, please try again later.', 429)
       }

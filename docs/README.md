@@ -171,6 +171,8 @@ module.exports.handler = serverless(service)
     // Route prefix, defined as string or as a RegExp instance.
     prefix: '/public',
     // Uses the raw request query string value instead of req.query. Default value: false
+    // By default "req.query" is what gets forwarded: a query string set through "req.url" by urlRewrite
+    // or the onRequest hook is only forwarded when this setting is enabled (or by updating "req.query").
     disableQsOverwrite: true,
     // Optional documentation configuration (unrestricted schema)
     docs: {
@@ -187,6 +189,7 @@ module.exports.handler = serverless(service)
     target: 'http://localhost:3000',
     // Optional HTTP methods to limit the requests proxy to certain verbs only
     // Supported HTTP methods: ['GET', 'DELETE', 'PATCH', 'POST', 'PUT', 'HEAD', 'OPTIONS', 'TRACE']
+    // 'TRACE' requires restana: { enableTrace: true }, methods the server does not support are ignored
     methods: ['GET', 'POST', ...],
     // Optional route level middlewares. Default value: []
     middlewares: [],
@@ -256,6 +259,7 @@ WebSockets proxying is supported since `v3.1.0`. Main considerations:
   npm i faye-websocket
   ```
 - WebSockets middlewares are not supported.
+- The `targetOverride` option does not apply to WebSocket routes.
 - WebSocketRoute configuration definition:
 
   ```ts
@@ -265,17 +269,36 @@ WebSockets proxying is supported since `v3.1.0`. Main considerations:
     proxyConfig?: {}
     // used as micromatch matcher pattern: https://www.npmjs.com/package/micromatch
     // prefix examples: '/graphql', '/ws-all/*', ['/rtp', '/rtp/*.flv'], '!/media/*.avi'
-    prefix: string
+    prefix: string | string[]
     target: string
+    // upstream opening handshake timeout in milliseconds, 0 disables it. Default: 30000
+    timeout?: number
     // https://github.com/faye/faye-websocket-node#subprotocol-negotiation
-    subProtocols?: []
+    subProtocols?: string[]
     hooks?: WebSocketHooks
   }
 
   interface WebSocketHooks {
-    onOpen?: (ws: any, searchParams: URLSearchParams) => Promise<void>
+    // "req" is the upgrade request: headers, cookies, origin...
+    onOpen?: (ws: any, searchParams: URLSearchParams, req: IncomingMessage) => void | Promise<void>
   }
   ```
+
+- Global and route middlewares don't run for WebSocket connections. Use the `onOpen` hook to authenticate them and to check the `Origin` header (browsers don't apply the same-origin policy to WebSockets). Throwing an error rejects the connection, `err.closeEventCode` sets the close code:
+
+  ```js
+  hooks: {
+    onOpen (ws, searchParams, req) {
+      if (req.headers.origin !== 'https://app.example.com') {
+        throw Object.assign(new Error('Forbidden'), { closeEventCode: 4403 })
+      }
+    }
+  }
+  ```
+
+- The client request headers are not forwarded to the upstream, use `proxyConfig.headers` to send static ones.
+- Messages are relayed with backpressure: nothing is read from a peer while the other one is not consuming.
+- Paths longer than 1024 characters match no route, and paths containing `.` or `..` segments in any encoded form get a `400` response, as HTTP routes do.
 
 - The `/` route prefix is considered the default route.
 
@@ -335,6 +358,8 @@ gateway({
     rateLimit({
       windowMs: 1 * 60 * 1000, // 1 minutes
       max: 60, // limit each IP to 60 requests per windowMs
+      // restana has no "trust proxy" setting, the request IP is acquired above
+      validate: { trustProxy: false, xForwardedForHeader: false },
       handler: (req, res) =>
         res.send('Too many requests, please try again later.', 429),
     }),
@@ -482,24 +507,29 @@ Cache keys are generated using: `req.method + req.url`, however, for indexing/se
 Unfortunately, this feature can't be implemented at remote service level, because the gateway needs to know the entire lookup key when a request
 reaches the gateway.
 
-For doing this, we simply recommend using middlewares on the service configuration:
+For doing this, set `req.cacheAppendKey` in a middleware that runs **before** the cache middleware:
 
 ```js
+const cache = require('http-cache-middleware')()
+
 routes: [
   {
     prefix: '/users',
     target: 'http://localhost:3000',
     middlewares: [
       (req, res, next) => {
-        req.cacheAppendKey = (req) => req.user.id // here cache key will be: req.method + req.url + req.user.id
+        req.cacheAppendKey = (req) => req.user.id // here cache key will be: req.method + req.url + ' ' + req.user.id
         return next()
       },
+      cache,
     ],
   },
 ]
 ```
 
 > In this example we also distinguish cache entries by `user.id`, very common case!
+
+> The cache lookup happens when the cache middleware runs. If the cache is registered as a global middleware, route level middlewares run too late: set `req.cacheAppendKey` in a global middleware placed before it instead. Otherwise users would be served each other's cached responses.
 
 ## Disabling caching programmatically
 
@@ -515,10 +545,13 @@ routes: [
         req.cacheDisabled = true
         return next()
       },
+      cache,
     ],
   },
 ]
 ```
+
+> As with custom cache keys, `req.cacheDisabled` has to be set before the cache middleware runs.
 
 # Related projects
 
@@ -543,6 +576,51 @@ You can support the maintenance of this project:
 - [TRON](https://www.binance.com/en/buy-TRON) Wallet: `TJ5Bbf9v4kpptnRsePXYDvnYcYrS5Tyxus`
 
 # Breaking Changes
+
+## v6.1.x
+
+No configuration changes are required, but error handling and the upgraded dependencies are stricter:
+
+**Proxying ([fast-proxy-lite 1.2](https://github.com/BackendStack21/fast-proxy-lite#behavior))**
+
+- Requests are rejected with `400` when the forwarded path starts with `//` (e.g. `/prefix//admin`), contains a backslash or control characters, when the method is not upper case, or when `urlRewrite` returns an absolute URL on another origin than the route `target`. `CONNECT` requests get a `405`.
+- A `req.body` that can't be serialized gets a `400`. The `content-length` and `transfer-encoding` request headers are always set by the proxy.
+- A `rewriteHeaders` hook that throws results in a `500` response and a process warning.
+
+**Hooks**
+
+- A failing `onResponse` hook (sync throw or rejected promise) calls `onError` and gets an error response without the upstream headers. Before, a rejected async hook was an unhandled rejection and the request was left hanging.
+- `onError` is called at most once per request.
+- Custom proxy types (`proxyFactory`) don't receive a no-op `onResponse` hook anymore when the route defines none: `proxyOpts.onResponse` is then `undefined`, and the proxy is expected to deliver the response.
+- With the default `onResponse` hook on HTTP/2 gateways, the stream is reset when the upstream response fails midway. Custom hooks piping the response have to handle this themselves.
+- `HEAD`, `204` and `304` responses are never buffered, they don't get a `content-length: 0` header anymore.
+
+**Lambda**
+
+- Lambda responses that can't be delivered (invalid status code, invalid header values, unexpected payloads, invocation errors without a status code) get a `500` or `502` response. Before, they crashed the process.
+
+**Hostnames hook**
+
+- The `:authority` pseudo-header is used for HTTP/2 requests. Host names longer than 253 characters match no entry.
+
+**WebSockets**
+
+- The `onOpen` hook receives the upgrade request as third argument.
+- Messages are relayed with backpressure, and nothing is read from the client until the upstream connection is open.
+- The upstream gets 30 seconds to complete the opening handshake (`timeout` route option), then the client is closed with code `4504`.
+- Paths with `.` or `..` segments (also encoded) get a `400` response, paths longer than 1024 characters match no route.
+
+**Caching ([http-cache-middleware 2](https://github.com/BackendStack21/http-cache-middleware))**
+
+- The cache entry format changed, entries stored by v1 (e.g. in Redis) are ignored.
+- `req.cacheAppendKey` values are appended after a space, and `x-cache-expire` patterns only support `*` (case-sensitive).
+- `Cache-Control: no-store` is honored unless the response sets `x-cache-timeout`, and `s-maxage` takes precedence over `max-age`.
+- The `set-cookie` and hop-by-hop headers are not stored with cached responses. `206` and incomplete responses are not cached.
+- `deleteKeys` returns a promise.
+
+**TypeScript**
+
+- `gateway(opts)` requires its argument (it always did at runtime), and the `server` option no longer references the `Express` global namespace.
 
 ## v6.x
 
